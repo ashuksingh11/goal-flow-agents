@@ -3,12 +3,18 @@
 Start here. These docs cover the whole GoalFlow POC (a two-tier goal-based agent demo for the
 Samsung Tizen Family Hub).
 
+> **v2 is current.** GoalFlow was rebuilt into a **general goal-based agent** (SK plugins + auto
+> function-calling, advanced LangGraph, LLM-only, wow UI, two domains: meal + guest dinner). Start with
+> the v2 docs below. The v0/v1 docs (`SYSTEM_OVERVIEW`, `DEMO_RUNBOOK`) are kept for history.
+
 ## Cross-cutting (this folder)
 
-- **[SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)** — architecture, the three services, the wire protocol
-  (Contract v0), the end-to-end message flow (with diagrams), and the device harness pipeline.
-- **[DEMO_RUNBOOK.md](DEMO_RUNBOOK.md)** — how to deploy each service, run the demo (browser +
-  headless), a suggested run-sheet, and **troubleshooting** (LLM/429, WebSocket, build, data reset).
+- **[FINAL_DEMO.md](FINAL_DEMO.md)** ⭐ — the **final demo run-sheet** (v2): setup, the two-act demo
+  (meal + guest dinner) with narration, presenter mode, headless smoke test, and troubleshooting.
+- **[V2_DESIGN_PROPOSAL.md](V2_DESIGN_PROPOSAL.md)** — the v2 architecture: the 11 domain-agnostic
+  **harness modules**, capability vs steering modules, the use-case catalog, and what changed from v1.
+- [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) — *(v1, historical)* original architecture + Contract v0.
+- [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) — *(v1, historical)* the milestone-wise runbook.
 
 ## Per-repo code guides (in each repo)
 

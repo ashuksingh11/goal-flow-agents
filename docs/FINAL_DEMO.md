@@ -1,0 +1,130 @@
+# GoalFlow — Final Demo Run-Sheet (v2)
+
+The clean, end-to-end demo script for the **general goal-based agent** — two use cases (meal planning
+and guest-dinner prep) on the same backbone, with live "watch it think" streaming, human-in-the-loop
+approvals, and a proactive adaptation. This supersedes the milestone-wise runbook.
+
+> **Thesis (say it once up front):** *one general agent + pluggable Family-Hub modules.* The LLM
+> **plans** (Semantic Kernel function-calling over device plugins); **code checks** (a deterministic
+> safety filter); the human approves; the agent keeps adapting as the world changes.
+
+---
+
+## 0. One-time setup
+
+Three services on one machine (`~/ashu/git/`). Put your OpenRouter key in the two `.env` files and use
+a **paid** model (free `:free` models are rate-limited — see Troubleshooting):
+
+```bash
+# goal-flow-cloud-agent/.env  and  goal-flow-device-agent-ubuntu/.env:
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=openai/gpt-oss-120b     # a real tool-calling model
+```
+
+Start three terminals:
+
+```bash
+# 1) cloud hub
+cd goal-flow-cloud-agent && source .venv/bin/activate \
+  && uvicorn goalflow_cloud.server:app --host 127.0.0.1 --port 8000
+# 2) device agent (open the outbound WS to the cloud)
+cd goal-flow-device-agent-ubuntu \
+  && dotnet run --project src/GoalFlow.Device/GoalFlow.Device.csproj -- --connect ws://localhost:8000/ws
+# 3) UI
+cd goal-flow-agent-chat-ui && npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Open **http://localhost:5173** (kiosk/full-screen). The header shows **● open** when connected. Leave
+"Show agent flow" **off** for the story; toggle it **on** for a technical audience.
+
+Dates are **relative to the real today** — the sim clock and plan dates just work, no reset needed.
+
+---
+
+## Act 1 — Meal planning (the flagship)
+
+1. **The goal.** Type: *"help my family eat healthier this week and reduce food waste"* → **Go**.
+2. **Watch it think** (~30–60s — narrate this; it's the wow). The **progress rail** advances
+   Interpreting → Grounding → Planning → Checking; a **thinking line** streams; **tool-call chips**
+   pop in and check off as the LLM calls the device's plugins:
+   `Inventory · ListItems ✓`, `Inventory · GetExpiringItems ✓`, `Calendar · GetBusyEvenings ✓`,
+   `Recipes · FindRecipes ✓`. **Skeleton** rows shimmer where the plan will land.
+   - *Say:* "The fridge agent is calling its own tools — inventory, calendar, recipes — the model
+     plans; nothing's hardcoded."
+3. **The plan reveals as the hero.** A **"Knew:"** line shows what it understood (no-pork, the
+   low-sodium medical need, budget, mushroom dislike…); a green **Safety ✓ passed** chip; the plan
+   items (dishes, dates, a why, tags); an **impact badge** ("uses N expiring items").
+   - *Say:* "The plan was checked by **code**, not the model — allergens, budget, quiet hours. LLM
+     plans, code checks."
+4. **Approve (HITL, tiered).** Two proposals: a light **"QUICK OK — add missing groceries"** and a
+   firmer **"NEEDS YOUR APPROVAL — place grocery order"** (spends money). Click **Approve** → the
+   device executes and it flips to **"Added ✓"**.
+   - *Say:* "Nothing touched the shopping list until I approved. Reversible things are quiet; spending
+     money needs a firm yes."
+5. **It keeps thinking (adaptation).** Use the **SIM CLOCK** → **Advance day**. Quiet days report
+   *"on track"*. On the day of **Aarav's football practice**, an **ADAPTATION** card appears —
+   *"caught a change: football 18:00–19:30 overlaps the dinner prep window"* — with **Adapt / Decline**.
+   Click **Adapt** → it sets a night-before prep reminder.
+   - *Say:* "Four quiet days, one smart adjustment. It noticed the clash on its own and proposed a fix."
+
+---
+
+## Act 2 — Guest dinner (same agent, new goal → generality)
+
+Show it's **not a meal app** — the identical backbone handles a different goal.
+
+1. **The goal.** Type: *"we've got 6 people over Saturday for dinner — sort it out"* → **Go**.
+2. **Watch it think.** Same rail, but now the chips are different tools: `Guests · GetEvent ✓`,
+   `Guests · GetGuests ✓`, `Guests · GetDietaryConstraints ✓`, `Appliance · ListAppliances ✓`,
+   `Recipes · FindRecipes ✓`.
+   - *Say:* "Same agent, same harnesses — it just picked the tools that fit this goal."
+3. **The plan is a prep timeline.** Instead of a weekly menu, a **timed schedule**: prep dishes,
+   **preheat oven**, serve, **run dishwasher** — honoring the guests' dietary constraints (a
+   **nut-allergic** guest → no nut dishes). Proposals include **appliance actions** + shopping.
+4. **Approve.** Tiered again (appliance prep = light; place order = firm).
+5. **Adaptation.** Advance toward Saturday → a guest's **RSVP updates to add a nut allergy** → an
+   **ADAPTATION** card proposes a **nut-free swap**. Click **Adapt**.
+   - *Say:* "A guest changed their RSVP; it caught the allergy and adjusted the menu."
+
+---
+
+## The technical view (optional, for engineers)
+
+Toggle **"Show agent flow"** to reveal the live **WS message feed**: `hello`, `user_goal`,
+streamed `agent_event`s, `present_plan`, `approval`, `status` — the whole mechanism, live. Pair with
+`SYSTEM_OVERVIEW.md` (architecture + the 11 harness modules) and each repo's `CODE_GUIDE.md`.
+
+**One-liners for Q&A:**
+- *Harnesses?* 11 domain-agnostic modules — capability modules are SK plugins the LLM calls; steering
+  modules (safety filter, approval/HITL interrupt, grounding, monitor/adapt, trace) guide the output.
+- *Two tiers?* Cloud (LangGraph) owns talk/memory + interrupt-based HITL; device (SK) owns local truth
+  + is the only thing that calls tools. They never shortcut each other.
+- *Safety?* A deterministic SK function-invocation filter blocks tool calls that violate hard
+  constraints (allergens, budget cap, quiet hours) — separate from the LLM.
+
+---
+
+## Headless verification (no browser — for a smoke test before the demo)
+
+```bash
+cd goal-flow-device-agent-ubuntu
+dotnet run -- --contract data/sample-contract.json --domain meal_plan          # meal plan_ready
+dotnet run -- --contract data/sample-contract-guest.json --domain guest_dinner  # guest prep timeline
+dotnet run -- --simulate-week      # meal: 4 quiet days + the football adaptation
+dotnet run -- --simulate-guest     # guest: the nut-allergy RSVP adaptation
+```
+
+---
+
+## Troubleshooting (the ones that actually bite)
+
+| Symptom | Fix |
+|---|---|
+| `HTTP 429 … rate-limited` from the LLM | You're on a `:free` model. Use `openai/gpt-oss-120b` (no `:free`) in **both** `.env`. |
+| Plan never appears in the browser | The reasoning model takes ~30–60s — narrate the streaming. Check the cloud terminal; if 429, fix the model. |
+| Device disconnects mid-plan / crashes | Keep the **cloud stable** during a run (don't restart it mid-session). The device answers WS pings on a background loop; a cloud restart mid-plan can still drop it. |
+| `[Errno 98] address already in use` (cloud) | A previous cloud holds :8000 → `pkill -f "uvicorn goalflow"`. |
+| UI dev server on :5174 | Stale Vite on :5173 → `pkill -f vite`, restart. |
+| Demo data got dirty (approvals wrote to it) | UI **Reset week**, or `git checkout -- data/` in the device repo. Sims use temp copies. |
+
+Clean shutdown: `pkill -f "uvicorn goalflow"; pkill -f GoalFlow.Device; pkill -f vite`.
