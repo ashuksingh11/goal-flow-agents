@@ -1,5 +1,7 @@
 # GoalFlow — Demo Runbook
 
+> **HISTORICAL — v1. Superseded by [FINAL_DEMO.md](FINAL_DEMO.md) and [V2_DESIGN_PROPOSAL.md](V2_DESIGN_PROPOSAL.md). Kept for reference only.**
+
 How to deploy the three services, run the demo end-to-end, and troubleshoot. Read
 [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) first for the architecture.
 
@@ -78,6 +80,8 @@ WS_URL=ws://localhost:8000/ws dotnet run --no-build -- --connect
 Healthy when the log shows `connecting to ws://localhost:8000/ws`, `sent hello frame`,
 `received hello_ack`. Logs go to **stderr**; leave it running. Default planner is `rules`
 (deterministic, demo-safe). To use the LLM planner instead: add `--planner llm`.
+> *(Retired v1 design: the `--planner` flag and the rules/scripted planner no longer exist —
+> v2 planning is LLM-only. See the device repo's `README.md`/`CODE_GUIDE.md`.)*
 
 ## 3. Deploy — chat UI
 
@@ -129,6 +133,8 @@ This is the marquee flow — story on the left, mechanism on demand on the right
   dotnet run -- --contract data/sample-contract.json --planner rules   # prints plan_ready JSON
   dotnet run -- --contract data/sample-contract.json --planner llm     # real OpenRouter call (or falls back)
   ```
+  *(Retired v1 design: `--planner rules`/`--planner llm` no longer exist — v2 planning is
+  LLM-only, always via `--contract data/sample-contract.json` with no `--planner` flag.)*
 - **The whole adaptation week, headless:**
   ```bash
   dotnet run -- --simulate-week          # Mon..Fri sustain ticks; Wed = material + adaptation proposal; auto-resets
@@ -166,7 +172,7 @@ This is the marquee flow — story on the left, mechanism on demand on the right
 | `HTTP 429 … temporarily rate-limited upstream` | You're on a `:free` model. Free variants are account-throttled to ~1 req/15–20s and often fully blocked. | Drop the `:free` suffix — use `openai/gpt-oss-120b`. Set it in **both** `.env` files. |
 | `HTTP 401` | Bad/empty API key. | Check `OPENROUTER_API_KEY` in the `.env` (no quotes/spaces after `=`). |
 | LLM call returns empty `content` | `gpt-oss-120b` is a reasoning model; a small `max_tokens` is all consumed by hidden reasoning. | Already handled in code (generous tokens). If you added a custom call, raise `max_tokens` to ≥ 300. |
-| Plan card never appears (browser) | The cloud LLM call is just slow (reasoning model, 10–25s), or it 429'd. | Wait ~25s. Check the cloud terminal for a fallback/error log; if 429, fix the model per above. The cloud falls back to a scripted contract on failure, so a plan should still appear. |
+| Plan card never appears (browser) | The cloud LLM call is just slow (reasoning model, 10–25s), or it 429'd. | Wait ~25s. Check the cloud terminal for a fallback/error log; if 429, fix the model per above. The cloud falls back to a scripted contract on failure, so a plan should still appear. *(Retired v1 design: v2 is LLM-only end to end and fails loudly instead of falling back to a scripted contract.)* |
 
 ### WebSocket / connectivity
 

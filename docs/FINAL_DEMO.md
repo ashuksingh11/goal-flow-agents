@@ -44,28 +44,42 @@ Dates are **relative to the real today** — the sim clock and plan dates just w
 ## Act 1 — Meal planning (the flagship)
 
 1. **The goal.** Type: *"help my family eat healthier this week and reduce food waste"* → **Go**.
-2. **Watch it think** (~30–60s — narrate this; it's the wow). The **progress rail** advances
-   Interpreting → Grounding → Planning → Checking; a **thinking line** streams; **tool-call chips**
-   pop in and check off as the LLM calls the device's plugins:
+2. **Watch it think, round one** (~10–20s). The **progress rail** advances Interpreting →
+   Grounding; a **thinking line** streams while the cloud interprets the goal and loads the
+   family's memory.
+3. **Confirm understanding (the first HITL gate).** Before anything reaches the device, an
+   **Understanding card** appears: the objective restated in plain English, the household's hard
+   constraints as chips (no-pork, the low-sodium medical need, budget, quiet hours…), and a
+   one-line **thought** — the agent's approach. The rail pulses **Confirm**. Click **Confirm & plan**.
+   - *Say:* "Before it plans anything, it tells me what it heard — I sign off on the
+     *understanding*, not just the output."
+4. **Watch it think, round two** (~30–60s — narrate this; it's the wow). The **cloud→device
+   handoff** comet travels from the Cloud Agent to the Device Agent; the rail advances Planning →
+   Checking; **tool-call chips** pop in and check off as the LLM calls the device's plugins:
    `Inventory · ListItems ✓`, `Inventory · GetExpiringItems ✓`, `Calendar · GetBusyEvenings ✓`,
    `Recipes · FindRecipes ✓`. **Skeleton** rows shimmer where the plan will land.
    - *Say:* "The fridge agent is calling its own tools — inventory, calendar, recipes — the model
      plans; nothing's hardcoded."
-3. **The plan reveals as the hero.** A **"Knew:"** line shows what it understood (no-pork, the
-   low-sodium medical need, budget, mushroom dislike…); a green **Safety ✓ passed** chip; the plan
-   items (dishes, dates, a why, tags); an **impact badge** ("uses N expiring items").
+5. **The plan reveals as the hero.** The **"Knew:"** line re-confirms what it understood; a green
+   **Safety ✓ passed** chip; the week's dinners with a why, tags; an **impact badge** ("uses N
+   expiring items"). Below the plan, a strip of **World events** chips appears — the week's
+   real-world curveballs, one per day, waiting to be fired.
    - *Say:* "The plan was checked by **code**, not the model — allergens, budget, quiet hours. LLM
      plans, code checks."
-4. **Approve (HITL, tiered).** Two proposals: a light **"QUICK OK — add missing groceries"** and a
+6. **Approve (HITL, tiered).** Two proposals: a light **"QUICK OK — add missing groceries"** and a
    firmer **"NEEDS YOUR APPROVAL — place grocery order"** (spends money). Click **Approve** → the
    device executes and it flips to **"Added ✓"**.
    - *Say:* "Nothing touched the shopping list until I approved. Reversible things are quiet; spending
      money needs a firm yes."
-5. **It keeps thinking (adaptation).** Use the **SIM CLOCK** → **Advance day**. Quiet days report
-   *"on track"*. On the day of **Aarav's football practice**, an **ADAPTATION** card appears —
-   *"caught a change: football 18:00–19:30 overlaps the dinner prep window"* — with **Adapt / Decline**.
-   Click **Adapt** → it sets a night-before prep reminder.
-   - *Say:* "Four quiet days, one smart adjustment. It noticed the clash on its own and proposed a fix."
+7. **It keeps thinking (adaptation, on demand).** Click a **World events** chip — e.g. *"Wed —
+   Paneer spoiled"*. The chip shimmers to **firing**, the handoff comet travels again, and one
+   scoped LLM call re-plans just that day: an **ADAPTATION** card appears — *"caught a change: the
+   paneer spoiled and the rice ran out"* — with **Adapt / Decline**. Click **Adapt** → the affected
+   day card **morphs in place** (old dish struck through, new dish slides in, the card pulses) and
+   the chip settles to **fired ✓**. Fire another chip (e.g. the football-practice clash) to show it
+   again.
+   - *Say:* "There's no clock to babysit — I'm firing real-world events one at a time, and it
+     re-plans just the day that's affected, live, on its own."
 
 ---
 

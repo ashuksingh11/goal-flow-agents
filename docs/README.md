@@ -13,6 +13,11 @@ Samsung Tizen Family Hub).
   (meal + guest dinner) with narration, presenter mode, headless smoke test, and troubleshooting.
 - **[V2_DESIGN_PROPOSAL.md](V2_DESIGN_PROPOSAL.md)** — the v2 architecture: the 11 domain-agnostic
   **harness modules**, capability vs steering modules, the use-case catalog, and what changed from v1.
+- **[UX_CONFIRM_UNDERSTANDING.md](UX_CONFIRM_UNDERSTANDING.md)** — current design spec: the
+  confirm-understanding HITL gate (Understanding card) between grounding and planning.
+- **[UX_EVENT_REDESIGN.md](UX_EVENT_REDESIGN.md)** — current design spec: the event-driven meal
+  demo (World-events chip strip, `trigger_event`, morph-the-day-card animation, cloud→device
+  handoff visualization).
 - [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) — *(v1, historical)* original architecture + Contract v0.
 - [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) — *(v1, historical)* the milestone-wise runbook.
 

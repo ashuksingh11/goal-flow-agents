@@ -1,5 +1,7 @@
 # GoalFlow — System Overview
 
+> **HISTORICAL — v1. Superseded by [FINAL_DEMO.md](FINAL_DEMO.md) and [V2_DESIGN_PROPOSAL.md](V2_DESIGN_PROPOSAL.md). Kept for reference only.**
+
 A proof-of-concept for **goal-based agents** on a Samsung Tizen Family Hub. A user gives a
 fuzzy, high-level goal ("help my family eat healthier this week and reduce food waste"); a
 **cloud agent** and an **on-device agent** collaborate, with a **human in the loop**, to turn
