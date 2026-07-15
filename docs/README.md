@@ -34,14 +34,14 @@ Samsung Tizen Family Hub).
 
 ## Quick start
 
-Three terminals — see [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) for detail:
+**Run commands live in ONE place — [FINAL_DEMO.md](FINAL_DEMO.md) § "Run".** It has
+the canonical setup, the local (one-machine) commands, the across-machines
+(cloud / tablet / Tizen) variant, and the headless device sims. Don't copy run
+commands into other docs — link to that section instead, so they can't drift.
 
 ```bash
-# 1) cloud (hub)
-cd goal-flow-cloud-agent && source .venv/bin/activate && uvicorn goalflow_cloud.server:app --host 127.0.0.1 --port 8000
-# 2) device
-cd goal-flow-device-agent-ubuntu && WS_URL=ws://localhost:8000/ws dotnet run -- --connect
-# 3) UI
-cd goal-flow-agent-chat-ui && npm run dev -- --host 127.0.0.1 --port 5173
-# then open http://127.0.0.1:5173
+# 1) cloud   cd goal-flow-cloud-agent        && source .venv/bin/activate && ./run.sh
+# 2) device  cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj -- --connect
+# 3) UI      cd goal-flow-agent-chat-ui       && npm run dev
+# then open http://localhost:5173
 ```

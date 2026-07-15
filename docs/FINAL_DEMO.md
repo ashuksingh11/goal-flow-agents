@@ -21,23 +21,42 @@ OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_MODEL=openai/gpt-oss-120b     # a real tool-calling model
 ```
 
-Start three terminals:
+First-time-only install (once per repo):
 
 ```bash
-# 1) cloud hub
-cd goal-flow-cloud-agent && source .venv/bin/activate \
-  && uvicorn goalflow_cloud.server:app --host 127.0.0.1 --port 8000
-# 2) device agent (open the outbound WS to the cloud)
-cd goal-flow-device-agent-ubuntu \
-  && dotnet run --project src/GoalFlow.Device/GoalFlow.Device.csproj -- --connect ws://localhost:8000/ws
-# 3) UI
-cd goal-flow-agent-chat-ui && npm run dev -- --host 127.0.0.1 --port 5173
+cd goal-flow-cloud-agent      && python -m venv .venv && source .venv/bin/activate && pip install -e . && cp .env.example .env  # set OPENROUTER_API_KEY
+cd goal-flow-device-agent-ubuntu && cp .env.example .env   # set OPENROUTER_API_KEY
+cd goal-flow-agent-chat-ui    && npm install               # UI needs no .env — it derives the hub URL from its own host
+```
+
+### Run — all on one machine (the standard demo)
+
+Three terminals. **These are the canonical commands — use them, not any older variant.**
+
+```bash
+# 1) cloud hub — run.sh binds 0.0.0.0:8000 and loads .env
+cd goal-flow-cloud-agent && source .venv/bin/activate && ./run.sh
+# 2) device agent — dials the cloud; bare --connect defaults to ws://localhost:8000/ws
+cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj -- --connect
+# 3) UI — Vite binds all interfaces (server.host)
+cd goal-flow-agent-chat-ui && npm run dev
 ```
 
 Open **http://localhost:5173** (kiosk/full-screen). The header shows **● open** when connected. Leave
 "Show agent flow" **off** for the story; toggle it **on** for a technical audience.
 
 Dates are **relative to the real today** — the sim clock and plan dates just work, no reset needed.
+
+### Run — across machines (cloud on Ubuntu, UI on a tablet, device on the Tizen Hub)
+
+Same commands, only the endpoints change (the UI derives the hub from whatever host served it):
+
+- **Cloud (Ubuntu):** `./run.sh` — already on `0.0.0.0:8000`; open TCP 8000 if firewalled.
+- **UI (Ubuntu):** `npm run dev` — **leave `VITE_WS_URL` unset**. On the **tablet**, browse to
+  `http://<ubuntu-ip>:5173`; the UI connects to `ws://<ubuntu-ip>:8000/ws` automatically.
+- **Device (Tizen Hub):** set `WS_URL=ws://<ubuntu-ip>:8000/ws` in `goalflow.conf`, deploy the `.tpk`,
+  and watch `dlogutil GOALFLOW`. (An Ubuntu device instead: append the URL —
+  `dotnet run --project GoalFlow.Device.csproj -- --connect ws://<ubuntu-ip>:8000/ws`.)
 
 ---
 
@@ -122,11 +141,14 @@ streamed `agent_event`s, `present_plan`, `approval`, `status` — the whole mech
 
 ```bash
 cd goal-flow-device-agent-ubuntu
-dotnet run -- --contract data/sample-contract.json --domain meal_plan          # meal plan_ready
-dotnet run -- --contract data/sample-contract-guest.json --domain guest_dinner  # guest prep timeline
-dotnet run -- --simulate-week      # meal: 4 quiet days + the football adaptation
-dotnet run -- --simulate-guest     # guest: the nut-allergy RSVP adaptation
+dotnet run --project GoalFlow.Device.csproj -- --contract data/sample-contract.json        # meal plan_ready
+dotnet run --project GoalFlow.Device.csproj -- --contract data/sample-contract-guest.json  # guest prep timeline
+dotnet run --project GoalFlow.Device.csproj -- --simulate-week      # meal: 4 quiet days + the football adaptation
+dotnet run --project GoalFlow.Device.csproj -- --simulate-guest     # guest: the nut-allergy RSVP adaptation
 ```
+
+> Always pass `--project GoalFlow.Device.csproj`. A bare `dotnet run --no-build` from the repo root can
+> execute a **stale** binary (the root csproj and the sln use different output paths).
 
 ---
 
@@ -139,6 +161,6 @@ dotnet run -- --simulate-guest     # guest: the nut-allergy RSVP adaptation
 | Device disconnects mid-plan / crashes | Keep the **cloud stable** during a run (don't restart it mid-session). The device answers WS pings on a background loop; a cloud restart mid-plan can still drop it. |
 | `[Errno 98] address already in use` (cloud) | A previous cloud holds :8000 → `pkill -f "uvicorn goalflow"`. |
 | UI dev server on :5174 | Stale Vite on :5173 → `pkill -f vite`, restart. |
-| Demo data got dirty (approvals wrote to it) | UI **Reset week**, or `git checkout -- data/` in the device repo. Sims use temp copies. |
+| Demo data got dirty (approvals wrote to it) | UI **Reset week**. To reset files, only restore the runtime-mutated ones (`git checkout -- data/appliances.json data/shopping_list.json data/inventory.json data/shopping_list.json`) — do **not** `git checkout -- data/` wholesale (`daily_events.json` is a structural seed, not runtime residue). Sims use temp copies. |
 
 Clean shutdown: `pkill -f "uvicorn goalflow"; pkill -f GoalFlow.Device; pkill -f vite`.
