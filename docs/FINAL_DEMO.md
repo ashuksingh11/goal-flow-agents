@@ -63,7 +63,8 @@ Same commands, only the endpoints change (the UI derives the hub from whatever h
 The hub is **multi-session**: a **session = one device agent + N UIs**, keyed by a **`device_id`**.
 Frames route only within a session, so two homes (or two developers sharing one cloud) never see each
 other's goals. **Nothing to configure** — each agent self-generates a persistent `device_id` (stored in
-`<data>/device_id`) and names itself `user@machine`:
+`<data>/device_id`) and gives itself a label that is unique per agent — `ashu@boxA (3f9c2a)` on
+Ubuntu, `Family Hub (3f9c2a)` on a Tizen Hub (set `DEVICE_NAME` for a real name):
 
 ```bash
 # two device agents — each needs its OWN --data dir (the mock world is written to;
@@ -75,8 +76,9 @@ dotnet run --project GoalFlow.Device.csproj -- --connect ws://localhost:8000/ws 
 Then open the UI (one Vite server is enough — each **tab** pairs independently):
 
 - **One agent connected** → the UI auto-pairs. No picker, no config.
-- **Several connected** → the UI shows a one-time picker (`ashu@boxA` / `bob@boxB`); the choice is
-  remembered per browser.
+- **Several connected** → the UI shows a one-time picker (`ashu@boxA (3f9c2a)` / `bob@boxB (7d1e04)`);
+  the choice is remembered per browser. The short id is always appended so two entries can never read
+  identically — the same user/host on two machines (or two identical Hubs) would otherwise collide.
 - **Scripted/CI:** pin a tab with `?device=<id>`, e.g. `http://localhost:5173/?device=hub-a`, and give
   the agent a matching `--device-id hub-a` (also handy for a deterministic two-up demo).
 
