@@ -196,6 +196,45 @@ an inbound `goal_id` to which submission it was.
 
 ## 8. Agent Board — new repo `goal-flow-agent-board-ui`
 
+### How it talks to the device: it doesn't
+
+The board never touches the device — that would break the contract's hub-only invariant.
+It is a **read-mostly projection** of state the cloud derives:
+
+```
+DEVICE                    CLOUD (hub)                    BOARD UI
+  │  task_update ──────────►│                              │
+  │  plan_ready  ──────────►│  BoardService folds every    │
+  │  status      ──────────►│  frame it already routes     │
+  │  proposal    ──────────►│  into a GoalSummary          │
+  │                         │──── board_snapshot ────────► │  on bind
+  │                         │──── board_update ──────────► │  per change
+  │                         │◄─── board_get ────────────── │  heal a seq gap
+  │  ◄──── dispatch ────────│◄─── user_goal ───────────── │  New Goal
+```
+
+This is why `task_update` had to land before the board: the task DAG lives on the DEVICE
+(only it can ground a decomposition), so the cloud could not compute "68%, next step: buy
+decorations" until the device started saying so. The device is *upstream* of the board,
+never a peer. The board doesn't need the device online to render, either — summaries
+persist (M5).
+
+**The board SENDS only:** `hello`, `select_device`, `board_get`, `goal_state_get`,
+`user_goal`, `suggestion_action` (M8). **Never `approval` or `control`.**
+
+**Approvals live in the chat UI (decided).** The board shows `Waiting` + a pending count;
+tapping the card drills through. Keeping the board read-mostly is what makes it glanceable,
+and the chat UI's proposal cards — with tier, the literal `module.function`, and the money
+warning — already exist and work. Approving is two taps; a glanceable surface should tell
+you something needs you, not be where consequential decisions are made in one tap.
+
+**Drill-in is cross-app (decided).** The board and chat UI are two separate Vite apps on
+two ports, so the card links to the chat app's origin with `?goal=<id>`, read from
+`VITE_CHAT_UI_URL` and defaulting to `window.location.hostname:5173` — the same
+derive-from-the-page-host trick `ws.ts` already uses so a tablet on the LAN works with no
+config. It is honest about them being two surfaces; on a real Family Hub this would be a
+deep link into the Hub's own app instead.
+
 React 18 + Vite 5 + TS, matching the chat UI's stack (no component library, no Tailwind, hand-written
 tokens). **Light theme**, per the mock; the chat UI stays dark. Copy-don't-share `lib/ws.ts` (the
 singleton-socket pattern, the 1012-eviction rule, `?device=` + localStorage self-heal pairing) and
@@ -494,6 +533,92 @@ graph away**, build a new one over the same file, and *resume*. Reading state ba
 enough — the interrupt has to still be there to answer. Falsified against `MemorySaver`,
 which reports exactly the v2 failure: *"a NEW graph sees nothing"*, *"the goal is unusable,
 just visible"*.
+
+## 12g. Amendments from M6 (2026-07-17)
+
+M6 built `goal-flow-agent-board-ui` and the cloud fold behind it. **Phase C has begun.**
+The board renders live against a real device: a goal submitted on the board reaches the
+card, the card links into the chat UI, and confirming there moves the card within ~3s.
+
+**The card is born at the understanding gate, not at dispatch.** §8 had `on_goal_created`
+firing when the contract goes to the device. But the cloud holds every goal at the
+confirm-understanding interrupt *first*, and that gate can hold it indefinitely — it is
+waiting on a person. So the one state where a human is the blocker was the one state the
+board could not show: a goal started from the board sat on its optimistic placeholder
+forever, with nothing anywhere saying it wanted you. `on_understanding` now creates the
+card (`next_step: "Confirm what the agent understood"`, one `warn` alert), and
+`on_goal_created` overwrites it — **confirming IS the resolution**, so the alert clears
+itself with no extra event. `goal_state_get` replays the cached understanding, without
+which the board's own drill-in link landed on an empty stage.
+
+**A plan's rationale is not activity.** §8 fed `plan_ready.explanation` into the card's
+activity line. That field is a paragraph, and clipped to fit it rendered *"The 7-day
+vegetarian dinner plan leverages existing inven…"* — the exact failure `_title` was
+written to prevent, reintroduced one field over. Activity now comes from **completed task
+titles**, which the planner already writes as short human phrases. Before the first task
+finishes the line is empty, which is honest: nothing has happened yet.
+
+**Gate 13 passed while the bug shipped**, because its fixture explanation was a tidy
+one-liner. *A fixture prettier than production tests nothing.* The gate now feeds the
+field a real paragraph. This is the same lesson as M2 and M5 in a third costume: the M2
+DAG was declared in dependency order, M5's barrier never interleaved, and M6's fixture was
+too neat — **every one of them made the gate incapable of failing.**
+
+**One wire, two spellings.** The device emitted `task_update.state` via
+`ToString().ToLowerInvariant()` → `"awaitingapproval"`, while `task_status` and `phase`
+carried `"awaiting_approval"`. It hid because `AwaitingApproval` is the *only* multi-word
+member of `TaskState` — every other value round-tripped by accident, and the cloud's check
+happened to test `"completed"`, a single word. Fixed with `Trace.ToWire()`; the
+enumeration is now written into `CONTRACT.md` (**an example does not pin an enum**), and
+gate 14 grew a field-level check — it had only ever compared frame `type`s and
+agent_event kinds, so any field's own enum could drift freely.
+
+**Gate 14 must know the two UIs are different shapes.** Applied uniformly it demanded the
+board mirror `approval`, `control`, `dispatch`, `plan_ready`. The board is a deliberate
+slice, so the gate now carries a per-UI spec — and `types_exempt` for the board *is* the
+"read-mostly" decision written down: adding `approval` to its mirror fails the build and
+asks for the decision to be changed on purpose. It also now checks the board's own
+`INBOUND_TYPES`, which was unchecked — the newest silent dropper in the system, exactly
+the hole this gate exists to close.
+
+**Design-mock fidelity is a reading decision, not a pixel one.** The mock's four footer
+cells wrap to two lines; ours ellipsed, rendering *"Fetch curre…"* — destroying the single
+most useful fact on the card. And four equal columns is a layout convenience, not a
+reading one: Next Step is a sentence fragment, the other three are a date and two
+integers, so it takes 1.7fr.
+
+**The device's LLM calls had no timeout — and the board is what made it visible.**
+Observed live, twice in one session: a streaming call to `openai/gpt-oss-120b` stopped
+mid-token and never returned. The provider was healthy (a direct request answered in
+1.5s — OpenRouter had simply routed that stream to one that hung), the device process
+stayed alive, nothing was logged, and the card read *"Working out the steps…"* for **four
+hours**. A goal could stall forever while every surface reported progress. The board did
+not cause this; it made a pre-existing hole legible, which is the argument for building
+it. Fixed here rather than deferred to M8 — it was reproducible enough to hit twice and
+it is a demo-killer.
+
+`HttpClient.Timeout` does **not** cover it: streaming reads with `ResponseHeadersRead`,
+so the timeout is satisfied the moment headers arrive and everything after is an
+unbounded read. The deadline has to be a cancellation token. It is *linked* to the
+goal's token and never cancels it, so `IsTransientProviderError` already classifies the
+expiry as transient — **a hang flows into the retry machinery that was already there for
+provider flakiness**, instead of needing a second path.
+
+**Gate 15 passed on its first run, and was worthless.** Its fake SSE server emitted a
+token containing an unescaped quote, so the chunk was invalid JSON; the SDK threw
+`JsonReaderException` in 87ms; `JsonException` is *itself* in the transient list — so
+every assertion went green with the deadline never firing. Two things fixed it: a fixture
+the client actually parses, and a **lower** time bound (`>= 2.5s`), which nothing but
+waiting out the deadline can satisfy. **This is the fourth gate in this project to pass
+while being incapable of failing** (M0's `&&`, M2's ordered DAG, M5's synchronous
+barrier, M6's pretty fixture). The pattern is always the same: the test never reaches the
+state it claims to test.
+
+Gate 16 is separate on purpose: gate 15 proves the *mechanism*, gate 16 greps that every
+call site is *wired* to it. Different claims — the mechanism working while one call site
+sits on the bare token is exactly how this regresses silently. And `timeout 120` in the
+gate script is load-bearing: without the deadline the verification **hangs**, and a gate
+that hangs on regression is barely better than one that passes.
 
 ## 13. Verification
 
