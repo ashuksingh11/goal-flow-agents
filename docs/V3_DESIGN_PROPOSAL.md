@@ -274,11 +274,51 @@ the board's honesty.
 5. **Scope creep toward the 13-component TDS** — resist. The extra components map onto existing modules.
    No empty folders.
 
-## 12. Verification
+## 12. Amendments from M0 (2026-07-17)
 
-- **Regression canary, every milestone:** `--simulate-week` + `--simulate-guest` byte-identical. The meal
-  plan working unchanged after the refactor *is* the test that the harness didn't get less generic.
-- **M0 gate:** the derived grounding set == today's 13 functions, exactly.
+M0 shipped and corrected three things this doc got wrong. Recorded here rather than
+quietly fixed, because each was an idea that sounded right and did not survive contact.
+
+1. **§12's "sim output byte-identical" was unsatisfiable.** `--simulate-week` makes ~10
+   OpenRouter calls at temperature 0.1–0.2; its text differs every run. The real gate is
+   the deterministic surface — the `capabilities` frame and the derived grounding list,
+   diffed against goldens captured *before* the refactor (`verify/m0/`), with the sims
+   asserted **structurally** (7 days, `safety.gate == passed`, proposals from the known
+   set). Corrected below.
+2. **`data/` does not move to `Products/FamilyHub/data/`.** `--data ./data-a` is a
+   documented multi-session workflow and `EnsureDataDir` seeds from a hardcoded `"data"`,
+   so moving it changes CLI behavior — the one thing M0 forbids. Tizen reinforces this:
+   its resource dir is read-only, so the runtime data dir is a deployment concern, never
+   source-tree-relative. Read §3's intent as *the **seed** is product-owned* and defer.
+3. **"`Harness/` contains zero product strings" is false on day one, by this doc's own
+   sequencing** — it defers the `IDomainObserver` extraction to M2 and `policy.json` to
+   M1, so those literals are *supposed* to survive M0. The honest invariant is **"no NEW
+   product strings; existing ones pinned and scheduled"**, enforced by a count that can
+   only shrink (10 at M0: 6 in SafetyFilter → M1, 4 in MonitorAdapt → M2). Every one
+   carries a `// PRODUCT-DEBT(Mx)` marker.
+
+Two facts M0 established that later milestones depend on:
+
+- **The grounding set is 13 = the reads of the 7 *implemented* plugins.** A naive "all
+  non-side-effecting functions" rule yields **17** — `FamilyProfiles` and `Budget` are
+  reads that merely throw. Availability (`[Unavailable]`) is load-bearing, not polish;
+  verified by stripping it and counting.
+- **Order is part of the contract with the model.** The grounding set is in declaration
+  order while the capabilities frame sorts alphabetically. The tools array is the prompt,
+  so `FamilyHubProduct`'s descriptor order is behavior, not style.
+
+## 13. Verification
+
+- **The gate script is `verify/m0/check.sh`** in the device repo (no test framework exists there; none
+  was added). Gates 1–3 are offline and need no API key; `--smoke` adds the LLM check.
+- **Regression canary, every milestone:** `--simulate-week` + `--simulate-guest` still produce a
+  well-shaped plan (7 days, safety passed, known proposal targets) — **not** byte-identical; see §12.
+  The meal plan working unchanged after the refactor *is* the test that the harness didn't get less generic.
+- **M0 gate (shipped):** the `capabilities` frame byte-identical to a pre-refactor golden, and the derived
+  grounding set == the 13 functions **in the same order**.
+- **Gates must be falsification-tested.** A gate that cannot fail is a false assurance — M0's first
+  version silently passed a deliberately broken build (`diff && echo PASS` swallows failure under
+  `set -e`). Break it on purpose before trusting it.
 - **Concurrency:** submit 3 goals with *different* hard constraints; assert each goal's blocks cite its
   own constraints (the `SetPolicy` regression) and that no `agent_event` seq collides across goals.
 - **Persistence:** kill the cloud at `awaiting_approval`; restart; the board rehydrates and approval resumes.
