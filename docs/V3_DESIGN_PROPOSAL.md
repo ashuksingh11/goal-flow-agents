@@ -307,10 +307,42 @@ Two facts M0 established that later milestones depend on:
   order while the capabilities frame sorts alphabetically. The tools array is the prompt,
   so `FamilyHubProduct`'s descriptor order is behavior, not style.
 
+## 12b. Amendments from M1 (2026-07-17)
+
+M1 shipped the Safety Policy Engine. Three things worth recording:
+
+1. **The `SetPolicy` clobber had a twin, and the twin was worse.** §4 named the
+   plan-path clobber. Implementing it turned up that `ApplyApprovalCoreAsync` armed
+   **no policy at all** — it called `SetTrace` but never `SetPolicy`, then invoked
+   approved proposals through the kernel. So the *actuation* gate, the last check
+   before money moves or an appliance starts, ran against whatever policy the last
+   plan run left behind. One goal → right policy by luck. Both are fixed by the same
+   per-goal scoping; all three entry points now enter their goal's scope, and an
+   unscoped call logs `safety_unscoped` rather than inheriting a stranger's policy.
+2. **Allergen matching was a literal substring test** — `allergens:["peanuts"]` did
+   not block `"peanut butter"`. Latent (the meal contract seeds no allergens; no
+   recipe contains nuts) but live the moment a goal proposes free-text groceries for
+   an allergic family, i.e. the birthday/nut-allergy case in §9. Fixed in M1's
+   `blocked_terms` rule with token/stem matching. The over-blocking direction is
+   guarded just as hard: a "nuts" allergy must still allow coconut, butternut squash
+   and nutmeg, or the family switches the agent off.
+3. **Gate 3 counted comments as debt.** After moving the checks into `policy.json`
+   the count hadn't moved — the coupling was gone but doc comments explaining
+   *"this used to hardcode ShoppingList"* still matched. As written it priced honest
+   comments as debt and rewarded deleting them. It now strips comments and measures
+   dependency. Harness debt: **10 → 4** (all `MonitorAdapt`, → M2).
+
+`adapt` turned out **not to be a grade at all** — it says where a proposal came from,
+not how much consent it needs. It becomes a proposal *origin*; an adaptation carries
+the grade of the effect it performs. Mapping it onto the A0–AX axis would have baked a
+category error into an enum.
+
 ## 13. Verification
 
-- **The gate script is `verify/m0/check.sh`** in the device repo (no test framework exists there; none
-  was added). Gates 1–3 are offline and need no API key; `--smoke` adds the LLM check.
+- **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
+  previous, so the earlier gates stay permanent regression checks rather than milestone trivia. (No test
+  framework exists there; none was added.) All gates are offline and need no API key; `--smoke` adds the
+  LLM sims.
 - **Regression canary, every milestone:** `--simulate-week` + `--simulate-guest` still produce a
   well-shaped plan (7 days, safety passed, known proposal targets) — **not** byte-identical; see §12.
   The meal plan working unchanged after the refactor *is* the test that the harness didn't get less generic.
