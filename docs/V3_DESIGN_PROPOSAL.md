@@ -457,6 +457,44 @@ adaptation fires end-to-end); "get the house ready, we're away next week" is now
 actionable where v2 declined it; trivia and poems are still declined — generic must not
 mean "accepts anything".
 
+## 12f. Amendments from M5 (2026-07-17)
+
+M5 closed the concurrency and persistence gaps. **Phase B is done.** §4's three bugs are
+all fixed (the `SetPolicy` clobber in M1, the `Dictionary`s in M2/M5, Trace here), and
+§5's persistence landed.
+
+**The two cloud fixes hold each other up**, which §5 treated as separate items.
+`check_same_thread=False` on the SQLite checkpointer is only safe *because* the hub now
+holds a per-goal lock around every invoke: a `thread_id` is a `goal_id`, so two threads
+never touch the same checkpoint. Shipping the checkpointer without the locks would have
+swapped a lost-state bug for a corrupted-state one.
+
+**Why the locks are per-goal and not global:** goals must still run in parallel — goal B's
+interpretation must not wait on goal A's approval. Per-goal serialised, cross-goal
+concurrent. All five invoke sites audited, not assumed.
+
+**Planning is serialised behind one slot** — and that is honesty, not correctness (state is
+per-goal now). Three concurrent plans mean triple the token burn on a key that already
+402s, and a "watch it think" stream interleaved from three goals reads as noise. A queued
+goal emits `phase: "queued"` and says so, which the board shows as **Waiting** — a state a
+person can read, rather than a card sitting there. Short work (approvals, control ticks,
+adaptations) does *not* take the slot; blocking those behind someone else's 60-second plan
+would be the very stall this avoids.
+
+**A testing lesson, now twice over.** Gate 11 passed against a deliberately shared Trace
+scope. The barrier was one `TaskCompletionSource`, and `await` on an already-completed task
+continues **synchronously** — so goal-a ran to completion before goal-b started, the two
+never overlapped, and the bug sailed through. Same shape as M2, where the DAG was declared
+in dependency order and a broken `NextReady` still looked correct. **A concurrency test
+that does not actually interleave is theatre.** Fixed with a two-way rendezvous; the same
+falsification then reported goal-a: 0 frames, goal-b: 20 — every one of A's events stolen.
+
+Gate 12 tests the promise rather than the library: run a goal to its interrupt, **throw the
+graph away**, build a new one over the same file, and *resume*. Reading state back is not
+enough — the interrupt has to still be there to answer. Falsified against `MemorySaver`,
+which reports exactly the v2 failure: *"a NEW graph sees nothing"*, *"the goal is unusable,
+just visible"*.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
