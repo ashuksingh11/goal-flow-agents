@@ -29,7 +29,7 @@ glanceable dashboard over every running goal.
 |---|---|
 | **Planning location** | **Device.** The cloud sends the goal contract only — no task list. |
 | **Planner depth** | **Two-altitude**: decompose goal → task DAG, then plan each task as it becomes ready. |
-| **Agent Board** | **New repo** (`goal-flow-agent-board`), the 6th code repo. |
+| **Agent Board** | **New repo** (`goal-flow-agent-board-ui`), the 6th code repo. |
 | **Genericity proof** | **Structural only** — fridge-specific is fine for v3. No 2nd product pack, no `--pack` loader. |
 | **Scope** | New use cases + negative paths + persistence + proactive suggestions, **pruned to demo need**. |
 | **Tizen** (2 repos) | **Stay frozen**; one re-sync at the end (M9). |
@@ -194,7 +194,7 @@ GoalSummary objects** (replace-by-id, idempotent). `board_seq` is monotonic per 
 sends `board_get` to heal. `client_ref` exists because with 2 goals in flight the UI cannot otherwise tie
 an inbound `goal_id` to which submission it was.
 
-## 8. Agent Board — new repo `goal-flow-agent-board`
+## 8. Agent Board — new repo `goal-flow-agent-board-ui`
 
 React 18 + Vite 5 + TS, matching the chat UI's stack (no component library, no Tailwind, hand-written
 tokens). **Light theme**, per the mock; the chat UI stays dark. Copy-don't-share `lib/ws.ts` (the
@@ -253,7 +253,7 @@ Demo runnable after every milestone. **Confirm before phase jumps.**
   (**includes the `SetPolicy` fix**) · M2 Task Manager + two-altitude planner · M3 Pre-check Engine.
 - **Phase B — multi-goal + cloud.** M4 generic actionability gate (before M7) · M5 concurrency +
   persistence.
-- **Phase C — Agent Board.** M6 contract-v3 board frames + `BoardService` + `goal-flow-agent-board` +
+- **Phase C — Agent Board.** M6 contract-v3 board frames + `BoardService` + `goal-flow-agent-board-ui` +
   chat-UI `?goal=` deep-link. *Parallelizable with Phase B.*
 - **Phase D — demo.** M7 plugins + use cases · M8 negative paths + proactive suggestions · M9 Tizen
   re-sync (one pass), device `HARNESSES.md` v3 rewrite, demo choreography.
