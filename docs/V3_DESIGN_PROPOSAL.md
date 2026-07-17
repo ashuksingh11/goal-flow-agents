@@ -620,6 +620,59 @@ sits on the bare token is exactly how this regresses silently. And `timeout 120`
 gate script is load-bearing: without the deadline the verification **hangs**, and a gate
 that hangs on regression is barely better than one that passes.
 
+## 12h. Amendments from M7 (2026-07-17)
+
+M7 added the Vacation and Birthday use cases and the plugins behind them. **Both run
+live against a real device**: the vacation goal routes to `vacation_prep` and plans
+lock-and-arm + eco appliances + reminders; the birthday goal routes to `birthday_party`
+and costs the order at $24.50 under the $120 cap via the new Budget plugin.
+
+**A use case turned out to be almost nothing but an observer.** The M4 genericity work
+paid off exactly as designed: the cloud needed **zero** changes. An `IDomainObserver`
+IS the domain advertisement, so registering `VacationPrepObserver` /
+`BirthdayPartyObserver` is what makes the cloud interpreter route to those domains —
+no interpreter edit, no gate edit, no contract field. The whole cloud-side cost of two
+new use cases was deleting stale documentation.
+
+**`vacation_prep` is the M4 gate's payoff made real.** v2's interpreter *declined* "get
+the house ready, we're away next week" as out of scope. It is now actionable purely
+because the device advertises Security + Appliance + Reminders + Calendar — "what this
+assistant can do is a fact about the device that is plugged in." The generic gate wasn't
+a refactor; it was the thing that let a use case be added without touching the cloud.
+
+**Implementing a stub is deleting one line.** The three stubs (FamilyProfiles, Budget,
+Notify) already sat in the manifest with constructors wired; each became real by writing
+the method bodies and deleting its `[Unavailable]` attribute. That grew the planner's
+grounding set 13 → 18, which gates 1–2 byte-diff — and the golden diff **is** the
+reviewable record of the catalog change, not a failure. The stub-exclusion mechanism
+stays load-bearing for anything still unimplemented.
+
+**Old foresight got used.** Security's `ArmSecurity` binds the `camera_operational` and
+`ai_vision_initialized` prechecks — two probes that shipped in `device_state.json` back
+in M3 and sat unused ever since, waiting for exactly this. A goal now can't tell a
+departing family the house is watched when the camera is dark.
+
+**The gate-that-can't-fail returned in a fifth costume.** Gate 17 was written
+`head -1 dump | python3 - <<'PY'` — but `python3 - <<'PY'` binds stdin to the heredoc
+(the script itself), so `json.load(sys.stdin)` read an empty stream: the gate would have
+**crashed with JSONDecodeError**, not asserted anything. Same lesson as M0's `&&`, M2's
+ordered DAG, M5's synchronous barrier, and M6's pretty fixture — the check never reached
+the state it claimed to test. Caught by falsifying it (drop a domain, drop a plugin);
+fixed to read the frame from a file.
+
+**One chat-UI robustness fix:** `reduceInbound` had no `default` case, so an unmapped
+frame returned `undefined` and the next frame crashed reading `state.nextId`. Every
+allowlisted type is handled today, so it never fired in production — but a reducer that
+can return undefined is a loaded gun the moment the contract grows. Now defaults to
+carrying the goal update and dropping the frame.
+
+**Scope held.** The chosen cut was Vacation + Birthday done well, NOT the mock's full
+SmartThings/FamilyBoard plugin roster — ApplianceControl is already SmartThings-backed
+and Notify.Announce already covers a family board, so those would have been plumbing
+without new demo capability. The LLM uses what a goal needs (Budget featured in both
+plans; Notify/FamilyProfiles are present and proposable but unused this run) — the
+capability existing is the deliverable, not the LLM being forced to call it.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
