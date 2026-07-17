@@ -52,6 +52,17 @@ read the relevant one before coding there.
 
 ## Conventions
 
+- **Branching (v3 onward): one branch per MILESTONE, the SAME name in every repo it
+  touches** — `v3-m1-safety-policy`, `v3-m2-task-manager`, … Merge to `master` with
+  `--no-ff` when that milestone's gate passes, then delete the branch. So `master`
+  always equals the last completed milestone and the demo is always runnable from it,
+  and each milestone is one revertable anchor in history.
+  **Why the same name everywhere:** there is no cross-repo atomic commit, and the
+  contract has four mirrors (`CONTRACT.md`, `contract.py`, `contract.ts` ×2,
+  `Contracts/*.cs`) that M6 changes at once. Matching names are what make
+  "check out the milestone everywhere" possible; a mismatched checkout silently breaks
+  the wire protocol. Do not branch per-repo-per-taste — that drift already happened once
+  (`v3-harness-agent-board` vs `v3-m0-restructure`) and was cleaned up at the M0 merge.
 - **Commit identity:** author as `ashuksingh11`
   (`31301999+ashuksingh11@users.noreply.github.com`). **Push only when explicitly asked.**
 - **Workflow (per the human):** plan=Opus · architecture/design=Fable · coding=Codex CLI
