@@ -52,17 +52,34 @@ read the relevant one before coding there.
 
 ## Conventions
 
-- **Branching (v3 onward): one branch per MILESTONE, the SAME name in every repo it
-  touches** — `v3-m1-safety-policy`, `v3-m2-task-manager`, … Merge to `master` with
-  `--no-ff` when that milestone's gate passes, then delete the branch. So `master`
-  always equals the last completed milestone and the demo is always runnable from it,
-  and each milestone is one revertable anchor in history.
-  **Why the same name everywhere:** there is no cross-repo atomic commit, and the
-  contract has four mirrors (`CONTRACT.md`, `contract.py`, `contract.ts` ×2,
-  `Contracts/*.cs`) that M6 changes at once. Matching names are what make
-  "check out the milestone everywhere" possible; a mismatched checkout silently breaks
-  the wire protocol. Do not branch per-repo-per-taste — that drift already happened once
-  (`v3-harness-agent-board` vs `v3-m0-restructure`) and was cleaned up at the M0 merge.
+- **Branching (v3 onward):** a long-lived **`v3` integration branch** per repo; each
+  milestone gets its own branch off `v3` — `v3-m2-task-manager`, … — merged back into
+  `v3` with `--no-ff` when that milestone's gate passes, then deleted. `v3` → `master`
+  **once**, when v3 ships (M9).
+
+  ```
+  master ──────────────────────────────────────────────►  last coherent v2
+     └── v3 ──(M0)──(M1)──(M2)──…──(M9)──┐                 (all four surfaces work)
+           └ v3-m2-task-manager ┘        └──► merge to master when v3 ships
+  ```
+
+  **Why master must NOT carry mid-v3 state:** v3 breaks things *on purpose* between
+  milestones. M0 deletes `Modules/`, which the Tizen ports' copy recipe names
+  (`for d in Agent Contracts Modules Transport; do diff -rq …; done`) — so from M0 until
+  the M9 re-sync, any branch carrying v3 cannot satisfy that check. That intermediate
+  state belongs on `v3`, not on the branch you'd fall back to for a demo. Same for the
+  contract mirrors mid-M6. (This was learned the hard way: M0 and M1 were merged
+  straight to master, leaving it broken for Tizen, before being moved onto `v3`.)
+
+  **Why the same branch name in every repo:** there is no cross-repo atomic commit, and
+  the contract has four mirrors (`CONTRACT.md`, `contract.py`, `contract.ts` ×2,
+  `Contracts/*.cs`) that M6 changes at once. Matching names are what make "check out the
+  milestone everywhere" possible; a mismatched checkout breaks the wire protocol at
+  runtime, not build time. Don't branch per-repo-per-taste — that drift already happened
+  once (`v3-harness-agent-board` vs `v3-m0-restructure`).
+
+  A repo only gets a `v3` branch when a milestone actually touches it (cloud, chat-ui and
+  the Tizen repos have none yet).
 - **Commit identity:** author as `ashuksingh11`
   (`31301999+ashuksingh11@users.noreply.github.com`). **Push only when explicitly asked.**
 - **Workflow (per the human):** plan=Opus · architecture/design=Fable · coding=Codex CLI
