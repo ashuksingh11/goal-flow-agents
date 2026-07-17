@@ -419,6 +419,44 @@ reason and **zero LLM calls** (checked before a token is spent); oven unplugged 
 planning and approval → that one proposal defers while the others proceed. Gate 9
 falsification-tested: a stubbed always-pass probe trips 4 of its assertions.
 
+## 12e. Amendments from M4 (2026-07-17)
+
+M4 made the actionability gate generic. §6 called this "mostly plumbing" — the hub had
+cached the device's capabilities since v2 and never fed them to the graph. That part was
+right. What it missed nearly shipped a regression.
+
+**Deleting `_canonical_domain` broke guest routing.** §6 said to delete the keyword hack,
+and it *was* a hack — but it was load-bearing in a way nothing recorded. The device
+**routes on the domain string**: `IDomainObserver` answers to it by name. With the hack
+gone the interpreter invented plausible slugs, and a guest dinner labelled `meal_plan`
+silently lost its RSVP watching — the guest demo's entire beat, failing quietly with no
+error anywhere. Caught only because the gate asserts the *domain*, not just actionability.
+
+Fixed the right way rather than by restoring the hack: **the device advertises its
+domains** (`capabilities.domains[{id, hint}]`, derived from its registered observers — add
+an observer and the cloud learns the domain exists), and the interpreter prefers them,
+coining a new slug only when none fits. That is what §4 of the capability-pack design
+called for; it just wasn't connected to the gate.
+
+Two smaller decisions:
+
+- **No device → decline, don't guess.** Guessing what we can do is precisely how this got
+  hardcoded to two domains in the first place.
+- **The refusal describes THIS device.** The redirect used to promise "the week's meals or
+  help you host a dinner" from a literal — which becomes a lie the moment a plugin is
+  added, the assistant claiming it can't do something it just learned. It now reads the
+  modules' own human-written descriptions.
+
+**A contract change landed here, not in M6**: `capabilities.domains`. Gate 1 caught it and
+forced a deliberate re-baseline rather than an accidental one — which is exactly its job.
+The grounding set is untouched at 13. §7's "all mirrors move in M6" still holds for the
+board frames; this one had to land with the gate that needs it.
+
+Verified live: `meal_plan` and `guest_dinner` both route correctly (and the nut-free
+adaptation fires end-to-end); "get the house ready, we're away next week" is now
+actionable where v2 declined it; trivia and poems are still declined — generic must not
+mean "accepts anything".
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
