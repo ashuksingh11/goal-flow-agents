@@ -3,16 +3,25 @@
 Start here. These docs cover the whole GoalFlow POC (a two-tier goal-based agent demo for the
 Samsung Tizen Family Hub).
 
-> **v2 is current.** GoalFlow was rebuilt into a **general goal-based agent** (SK plugins + auto
-> function-calling, advanced LangGraph, LLM-only, wow UI, two domains: meal + guest dinner). Start with
-> the v2 docs below. The v0/v1 docs (`SYSTEM_OVERVIEW`, `DEMO_RUNBOOK`) are kept for history.
+> **v3 is current (in design).** GoalFlow is being extended into a **multi-goal agent with an explicit
+> harness**: five first-class components (Capability Manager, Safety Policy Engine, Pre-check Engine,
+> Task Manager, Product API Adapter), device-side two-altitude planning, and **Agent Board** — a new
+> repo, a glanceable dashboard over every running goal. Start with `V3_DESIGN_PROPOSAL.md`.
+> **v2 is the shipped architecture** the code still reflects; its docs remain accurate until M0 lands.
+> The v0/v1 docs (`SYSTEM_OVERVIEW`, `DEMO_RUNBOOK`) are kept for history.
 
 ## Cross-cutting (this folder)
 
+- **[V3_DESIGN_PROPOSAL.md](V3_DESIGN_PROPOSAL.md)** ⭐ — **the v3 architecture** (current): the five
+  harness components, how v2's 11 modules reconcile onto them, grades (A0/A1/A2/AX), multi-goal
+  concurrency, the contract-v3 delta, Agent Board, the use-case lineup, and the M0–M9 roadmap.
+- **[harness/](harness/)** — the v3 **architecture input**: the harness discussion doc, the device-agent
+  TDS, and the Agent Board / execution-framework mocks. Design input, not frozen spec.
 - **[FINAL_DEMO.md](FINAL_DEMO.md)** ⭐ — the **final demo run-sheet** (v2): setup, the two-act demo
   (meal + guest dinner) with narration, presenter mode, headless smoke test, and troubleshooting.
-- **[V2_DESIGN_PROPOSAL.md](V2_DESIGN_PROPOSAL.md)** — the v2 architecture: the 11 domain-agnostic
-  **harness modules**, capability vs steering modules, the use-case catalog, and what changed from v1.
+- **[V2_DESIGN_PROPOSAL.md](V2_DESIGN_PROPOSAL.md)** — *(prior architecture)* the v2 design: the 11
+  domain-agnostic **harness modules**, capability vs steering modules, the use-case catalog, and what
+  changed from v1. Superseded by v3 §3, which maps the 11 onto the five components.
 - **[UX_CONFIRM_UNDERSTANDING.md](UX_CONFIRM_UNDERSTANDING.md)** — current design spec: the
   confirm-understanding HITL gate (Understanding card) between grounding and planning.
 - **[UX_EVENT_REDESIGN.md](UX_EVENT_REDESIGN.md)** — current design spec: the event-driven meal
