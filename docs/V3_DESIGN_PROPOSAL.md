@@ -377,6 +377,48 @@ reminders*. Constraints honoured from the contract, no world facts invented. Gue
 dinner decomposes to 6–8. **Fail-soft verified by breaking it**: garbage from the
 decompose call falls back to one task and still plans a full 7-dinner week.
 
+## 12d. Amendments from M3 (2026-07-17)
+
+M3 shipped the Pre-check Engine. **All five components now exist.**
+
+The design already said prechecks stay out of the SK filter; implementing it showed
+*why* that matters more than it first appears. The three gates answer three different
+questions, and the difference is one the **user feels**:
+
+| gate | question | answer means |
+|---|---|---|
+| Safety Policy Engine | is this ALLOWED? | never — the house rules forbid it |
+| Approval | is this CONSENTED? | waiting on a person |
+| **Pre-check** | is this POSSIBLE? | **not yet** — something is unplugged; it will resume |
+
+Conflating the first and third would teach the model to re-plan *around* a temporary
+outage as though it were forbidden — dropping the oven step rather than waiting for the
+oven — and would tell the user their house rules blocked something when actually a
+device was offline. Hence `PrecheckVerdict` is a separate field from `SafetyVerdict` on
+`plan_ready`, and the remediation text is the deliverable: *"the oven is offline —
+reconnect it and this will resume"* tells someone what to DO.
+
+Two corrections to §3's sketch:
+
+1. **`device_state.json` lives in `data/`, not `Products/FamilyHub/data/`** — per M0's
+   own amendment (data is the mutable runtime world; only `config/` is product-adjacent
+   and ships with the binary). I contradicted that while writing it and caught it.
+2. **Gate 2 matters more than gate 1**, which the design underplayed. Conditions drift
+   between planning and approval — and approval is *precisely* where the delay is,
+   because it waits on a human. An oven online at plan time can be unplugged by the time
+   someone taps Approve.
+
+`deferred_precheck` is **not a failure and not a drop**: `MarkExecuted` is deliberately
+not called, so the approval stands and the effect executes when the world recovers.
+Verified by contrast — with the oven offline, apply *and* replay both defer; with it
+online, apply executes and replay reports `already_executed`. (Recovery *across a
+restart* additionally needs the ledger to persist — M5.)
+
+Verified end-to-end: signed out → the goal returns 0 plan items with an actionable
+reason and **zero LLM calls** (checked before a token is spent); oven unplugged between
+planning and approval → that one proposal defers while the others proceed. Gate 9
+falsification-tested: a stubbed always-pass probe trips 4 of its assertions.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
