@@ -337,6 +337,46 @@ not how much consent it needs. It becomes a proposal *origin*; an adaptation car
 the grade of the effect it performs. Mapping it onto the A0–AX axis would have baked a
 category error into an enum.
 
+## 12c. Amendments from M2 (2026-07-17)
+
+M2 shipped the Task Manager and the decompose altitude. Four things to record:
+
+1. **Gate 3 had been under-counting badly: 4 was really 52.** Its vocabulary was
+   capitalized *module* names, so it never saw that `MonitorAdapt` knew the product's
+   whole **data model** — which documents exist (`calendar`, `daily_events`), their
+   shapes (`guests.pending_updates`), a hardcoded 17:30–18:30 prep window, guest copy,
+   and a materiality table made of this product's change kinds. So §3's "Harness/ is
+   clean" claim was true for CapabilityManager / SafetyPolicyEngine / ProductApiAdapter
+   and **false for MonitorAdapt**, on a number that implied otherwise. Now
+   case-insensitive and covering domains, modules, resource names and change kinds.
+   After the extraction: **52 → 6**, and the 6 are one prompt line in `Grounding.cs`.
+2. **Materiality moved to the observers, against this doc's "MaterialityPolicy stays
+   unchanged".** Its rules *are* product vocabulary — only the domain knows a nut
+   allergy matters and a restocked pantry item nobody cooks with does not. The harness
+   keeps the guarantee (material only, exactly once, one scoped re-plan); the product
+   owns the judgement. `IDomainObserver` is the seam. This doesn't weaken "LLM plans,
+   code checks": an observer is deterministic code, never a model.
+3. **Progress is a step function for the meal week, and that is honest.** §4 assumed
+   `progress = completed tasks / total`. True — but the meal week decomposes into
+   *planning* steps that all finish at the same approval, so it reads 0% then 100%.
+   The board's "68% · next step: buy decorations · 3 pending" assumes tasks that are
+   multi-day **work** (order the cake, send invites) completing one at a time — the
+   birthday-party shape (§9), not the meal-week shape. Same formula, different goal:
+   a meal week is planned once and then merely happens. Progress therefore counts
+   work the agent has done (Completed **or Monitoring**); a Failed task is terminal
+   but never progress, so a stuck goal can't drift toward 100%.
+4. **A goal needs an end condition.** Nothing completed a monitored goal, so it would
+   monitor forever and the board would show a finished week stuck "in progress". It
+   completes when the contract's `time_window` closes, read against the generic clock
+   — the calendar decides, not the agent.
+
+The decompose altitude works and produces the shape the input docs describe: *identify
+expiring inventory → find recipes using them → select one per weekday, accounting for
+Wednesday sports → shopping list under $60 → validate budget → add to calendar → set
+reminders*. Constraints honoured from the contract, no world facts invented. Guest
+dinner decomposes to 6–8. **Fail-soft verified by breaking it**: garbage from the
+decompose call falls back to one task and still plans a full 7-dinner week.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
