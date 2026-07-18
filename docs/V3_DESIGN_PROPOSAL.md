@@ -767,6 +767,51 @@ vacation use case v2 declined, and the honest negative paths.
 **Held:** `v3` → master is the user's explicit call. All M9 work is on `v3-m9-*` branches
 merged to `v3`; master stays the frozen v2 until released. Nothing pushed, the whole way.
 
+## 12k. v3.1 — board-centric flow (2026-07-18)
+
+After v3 landed, the team changed **which surface owns which moment**. This is a flow
+rework, not a re-architecture: no new components, and the **device is unchanged**.
+
+**The split — chat CREATES, board LIVES.** The chat UI is now the goal-creation surface
+only (goal entry, the understanding gate, the INITIAL tiered plan approval, and the live
+"watch it think" stream). Once the initial plan is approved it shows a hand-off banner and
+the goal's whole LIFE moves to the **Agent Board**: the full plan detail, monitoring, the
+world-event simulation controls, and the world-event (adaptation) approvals. On the Hub the
+shell swaps surfaces at the hand-off; in the browser demo you switch tabs.
+
+**The board is no longer read-mostly** (§8's original framing is retired). It renders the
+raw device stream on a per-goal **detail page** (tap a card): `present_plan`, `agent_event`,
+`status`, `proposal`. And it SENDS the two device-facing writes it used to forbid —
+`control` (fire world events / advance the sim clock) and `approval` (decide a world-event
+adaptation). It still never sends `dispatch`/`plan_ready`/`understanding_response`, and the
+understanding gate stays on the chat. Gate 14's board exemptions were rewritten to encode
+exactly this and **falsified** both ways.
+
+**Topology — §8 "How it talks to the device: it doesn't" still holds.** The board is the
+device's face **logically, through the hub** — not a physical link. The device is a lean,
+outbound-only client (Tizen-lean rules forbid server packages), so a direct device↔board
+channel is a **production item, deferred**; deferring costs nothing later — only the board's
+transport endpoint would change, not its components. (Optional future: a Tizen
+webview↔native-service feasibility spike.)
+
+**Why the device needed zero changes:** it already emits `present_plan`/`proposal`/
+`agent_event`/`status` and already handles `control`/`approval` inbound — it is indifferent
+to *which* UI sends them. The cloud needed no routing change either: it already broadcasts
+device frames to every ui in a session and already replays `present_plan` on
+`goal_state_get` (which is what refills a board detail page for a goal it never saw start).
+So v3.1 is a **UI + contract-scope** change: two web UIs + the board's contract mirror.
+
+**One correctness lesson (M1):** `goal_state_get` replays the latest cached `status`, so the
+board's status fold MUST be idempotent — executed actions dedupe by `proposal_id`, monitoring
+ticks by signature, agent-events skip an already-seen `seq`. Appending blindly double-counted
+the detail page's history on every drill-in.
+
+**Milestones (on `v3` line, master merge still held):** M1 — board interactive + goal detail
+page (merged to `v3`). M2 — world-event controls + adaptation approval on the board; chat
+becomes creation-only + hand-off banner (merged to `v3`). M3 — this amendment + the v3.1
+`FINAL_DEMO.md` rewrite. Verified deterministically (a mock hub) **and** with a real device
+end-to-end at each step.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
