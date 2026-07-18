@@ -722,6 +722,51 @@ decision written down.
 this one, though: it was falsified (strip the restock source → it fails) before being
 trusted. The *cloud's* gate-17 heredoc-stdin bug from M7 was the fresh reminder to check.
 
+## 12j. Amendments from M9 (2026-07-18)
+
+M9 is the last milestone: the Tizen agent re-sync, the doc rewrites, and the release
+gate. **Phase D is complete.**
+
+**The Tizen agent re-sync was almost entirely a host-composition rewrite, not a copy.**
+The frozen Tizen agent sat at pre-M0 (flat `Modules/`). The five core dirs
+(`Agent/ Contracts/ Harness/ Products/ Transport/`) copy over byte-for-byte from Ubuntu
+v3 — verified by `diff -rq`, so they inherit Ubuntu's whole gate chain (M0–M8, gates
+1–18) for free. But the *host* files aren't copyable: `DeviceHost.cs`'s composition root
+still built the v2 container (`MockWorldStore`, `CapabilityRegistry`, an 8-arg GoalAgent).
+It was rewritten to Ubuntu's current wiring — `AddFamilyHub` + the five harness
+singletons, `CreateAgent` building the `TaskManager` wired to the trace hook and the
+10-arg GoalAgent — and `Program.cs` gained the M8 suggester emission. The agent
+**builds** here (net8.0 + the Tizen.NET 12 NuGet reference assemblies, no workload
+needed), which is real structural verification; the on-real-Hub run stays a manual step.
+
+**The sharpest finding was a silent one.** The Tizen csproj lacked
+`<Content Include="Products/**/config/*.json">`, so the `.tpk` would have shipped with no
+`policy.json`/`prechecks.json` — and both loaders return EMPTY on a missing file, with no
+exception and no log. The Hub would have booted, connected, and planned with **zero safety
+enforcement** (no allergen/budget/quiet-hours gating), and a demo would have looked
+identical to a safe one. Fixed and verified: both files land in
+`bin/.../Products/FamilyHub/config/`. This is the M9 release-blocker to re-check on every
+future re-sync — the failure mode is invisible.
+
+**The re-sync recipe was stale by construction.** The AGENTS.md verification ran
+`diff -rq Modules …`, but `Modules/` no longer exists upstream, so it could never detect
+drift — it would just report every file "only in Tizen." Rewritten to diff
+`Agent Contracts Harness Products Transport`. A recipe that can't fail is the same trap as
+a gate that can't fail (M0's `&&`, M2's ordered DAG, M5's barrier, M6's fixture, M7's
+heredoc) — five gates and now a recipe, all the same lesson.
+
+**The device UI was stripped, per the v3 decision.** `UiChannel.cs`, the ~8 Program.cs
+forwarding call sites, and the `appmanager.launch` manifest privilege are gone — the v3
+Tizen agent does only the cloud path, and asks for nothing it doesn't use.
+`goal-flow-agent-tizen-ui` is untouched (v1/v2 work, not part of v3).
+
+**Docs:** `HARNESSES.md` reframed from "11 modules" to the five components + the engines
+M0–M8 added; `FINAL_DEMO.md` rewritten around the Agent Board, proactive suggestions, the
+vacation use case v2 declined, and the honest negative paths.
+
+**Held:** `v3` → master is the user's explicit call. All M9 work is on `v3-m9-*` branches
+merged to `v3`; master stays the frozen v2 until released. Nothing pushed, the whole way.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
