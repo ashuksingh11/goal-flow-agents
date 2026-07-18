@@ -812,6 +812,44 @@ becomes creation-only + hand-off banner (merged to `v3`). M3 — this amendment 
 `FINAL_DEMO.md` rewrite. Verified deterministically (a mock hub) **and** with a real device
 end-to-end at each step.
 
+## 12l. v3.2 — global "advance day" on the main board (2026-07-18)
+
+v3.1 put the world simulation on each goal's DETAIL page (per-goal event chips + a per-goal
+clock). But the device's sim clock is **device-wide**, and one day naturally moves the whole
+home — so v3.2 makes the simulation ONE global **Advance day** on the MAIN board.
+
+**The world tick.** A `control` command with **no `goal_id`** is now a world-level tick
+(`control.goal_id` became optional). The device's `HandleWorldControlAsync` advances the
+global clock ONCE, then fans out over `TaskManager.ActiveGoals` — observing each goal,
+emitting its `status` (+ an adaptation `proposal` when it newly catches a material change) —
+and summarises the day's world events (with the goal_ids each touched) as one new
+**`day_advanced`** frame. The registry + clock already existed; this is a fan-out loop, not a
+rearchitecture. Contract mirrors moved in one pass; gate 14 knows `day_advanced` is
+device-sent + board-received + CHAT-EXEMPT (falsified both ways).
+
+**Day-based progress (a deliberate reversal).** v3's rule was "the board's numbers come from
+the task DAG, never the clock." v3.2 changes it for the RUNNING phase: once a goal has a plan
++ time_window, BoardService derives `progress_pct` from where the sim date sits in that window
+(`_day_progress`), so an Advance day moves every card. Planning still shows task-DAG progress.
+
+**The board.** The main page gains an **AdvanceDayCard** (sends the goal-less `control`) and a
+**WhatHappenedCard** (renders `day_advanced` — the day's events + which goals they touched); a
+board-level `worldTick` in the reducer holds the latest. Goal cards update via the existing
+`board_update` fold; a goal with a pending adaptation flags **"Approval needed"**, and the
+approval stays on the DETAIL page (v3.1-M2's AdaptationCard — the human still approves every
+change; the card just points you there). The per-goal EventStrip + DemoControls were removed.
+
+**Zero-loss reuse.** The device already tracked all goals and the clock was already global;
+the cloud already broadcasts device frames + folds them. v3.2 is a fan-out loop + one frame +
+one progress derivation + two board cards. Milestones: M1 backend backbone (device + cloud +
+contract), headless-verified; M2 board UI + this amendment. Verified deterministically (mock
+hub) and with a real device (a goal-less advance_day fanned out to 2 goals + a real
+`day_advanced`).
+
+**Deferred:** one world event material to MULTIPLE goals at once (today only MealPlanObserver
+reads the daily feed); a global RESET (v3.2 dropped the per-goal reset — it needs cloud-side
+goal-clearing to keep the board in sync).
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the

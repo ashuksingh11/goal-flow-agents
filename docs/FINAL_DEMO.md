@@ -130,29 +130,32 @@ running low."**
 
 ---
 
-## Act 2 — The board drives the goal's life (detail page + world events)
+## Act 2 — Advance the world a day (v3.2): the board runs the whole home
 
-1. **Switch to the board and tap the card.** It opens the goal's **detail page** — the full
-   7-day plan, the "Knew" constraints, Safety ✓, impact, a **live activity** line, and a
-   **What has happened** history. (No jumping back to the chat — the board owns this now.)
-   - *Say:* "This is where the goal lives for the next seven days. The whole plan, what it's
-     done, what's coming — one surface."
-2. **Simulate the world.** The detail page has a **World events** strip — the curated things
-   that happen during the week: *Groceries arrive, Paneer spoiled, Football practice added,
-   Grandma joins.* (They unlock only once the plan is approved.) Fire **"Football practice
-   added Wed."**
-   - *Say:* "The device is a service that watches the world. I'll fast-forward one real
-     change — a calendar clash lands mid-week."
-3. **Approve the adaptation — on the board.** The agent catches the change and proposes a
-   fix, right here on the board: a **"Caught a change"** card — *"prep the wrap earlier so
-   dinner's ready before the 18:00 practice."* Click **Adapt.**
-   - *Say:* "It re-planned just the slice that changed. And because the board is the live
-     surface now, it asks me *here* — not back on some chat window I've closed."
-4. **The plan morphs in place.** The affected day updates with an **Updated** badge, an
-   impact delta (*"25 min saved"*), and the history logs the swap. The fired event shows
-   **✓**.
-   - *Say:* "The plan is alive — it changes in place as the world changes, and I steer it
-     from the one screen that's in front of me."
+The world simulation lives on the **main board** now, as one global **Advance day** — the
+device's sim clock is device-wide, so one tick moves the world for *every* goal at once.
+
+1. **Peek at a goal (optional).** Tap a card → its **detail page**: the full 7-day plan, the
+   "Knew" constraints, Safety ✓, impact, and a **What has happened** history. Tap **‹ Board**
+   to go back. (No jumping to the chat — the board owns this.)
+2. **Advance a day.** On the main board, press **Advance day**. The sim clock steps forward
+   once (*Sunday → Monday*), and a **"What happened today"** card appears below it listing the
+   day's world events — *"Fresh groceries arrived — affects Weekly Meal Plan"* — and which
+   goals each touched. **Every goal card updates**: its **progress % advances by the day**,
+   and a goal the change affected flags **"⚠ Approval needed."**
+   - *Say:* "The device is a long-running service watching the world. One tap advances the day
+     for the whole home — and it tells me exactly what happened and which goals it moved."
+3. **Approve the change — where it's flagged.** Tap the flagged **"Approval needed"** card →
+   its detail page shows a **"Caught a change"** card — *"fold the new chicken into Day 2."*
+   Click **Adapt.**
+   - *Say:* "It re-planned just the slice that changed, and it asks me right where the card
+     told me to look — not on some chat window I've closed."
+4. **The plan morphs in place.** The affected day updates with an **Updated** badge and an
+   impact delta; the history logs the swap; back on the board the card clears its flag.
+5. **Keep advancing.** Press **Advance day** a few more times — quiet days show *"nothing
+   changed,"* busy days surface the next event and move the cards along.
+   - *Say:* "The plan is alive across the week — it advances by the day and re-plans just the
+     slices that change, all from the one screen."
 
 ---
 
@@ -185,14 +188,24 @@ running low."**
 
 Toggle **"Show agent flow"** in the chat UI to reveal the live **WS message feed**:
 `hello`, `user_goal`, streamed `agent_event`s (incl. `task_update`), `present_plan`,
-`approval`, `status`, `suggestions`, the board's `board_snapshot`/`board_update`. Pair with
-the device repo's `docs/HARNESSES.md` (the five components) and `V3_DESIGN_PROPOSAL.md`.
+`approval`, `status`, `suggestions`, the board's `board_snapshot`/`board_update`, and the
+v3.2 world tick `day_advanced`. Pair with the device repo's `docs/HARNESSES.md` (the five
+components) and `V3_DESIGN_PROPOSAL.md`.
 
 **One-liners for Q&A:**
 - *Why did the controls move to the board?* v3.1: the chat is the **creation** surface
   (understanding gate + initial approval); the board is the **life** surface (plan detail,
-  monitoring, world events, and world-event adaptation approvals). The chat closes after
-  approval, so the live surface is where the steering must be.
+  monitoring, world events, and adaptation approvals). v3.2 went further: the world
+  simulation is now ONE global **Advance day** on the main board — the sim clock is
+  device-wide, so one tick fans out to every goal (a goal-less `control`), the device
+  summarises the day as a `day_advanced` frame, and every card advances.
+- *How does progress move?* The board's card numbers are cloud-derived. During planning it's
+  the device's task DAG; once a goal is RUNNING, v3.2 makes progress **day-based** — where the
+  sim date sits in the goal's time window — so **Advance day moves every card**. (A deliberate
+  change from the older "progress only from the task DAG, never the clock" rule.)
+- *Where do adaptation approvals happen?* A day-advance that materially changes a goal flags
+  its card **"Approval needed"**; you tap it and approve on the **detail page** (the same
+  AdaptationCard). The human still approves every change — the main page just points you to it.
 - *Does the board talk to the device directly?* No — it's a web UI on the cloud hub, and the
   board is the device's face *logically*, through the hub. Every card and every raw frame it
   shows is device-originated and relayed; it just gained the device-facing writes (`control`,
@@ -239,9 +252,9 @@ cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj 
 | Plan never appears | The reasoning model takes ~30–60s — narrate it. If the cloud terminal shows 429, fix the model. |
 | Device disconnects mid-plan | Keep the **cloud stable** during a run (don't restart it mid-session) — a cloud restart drops the device. |
 | Board shows nothing / a card is stuck | Reload the board (it re-fetches a fresh `board_snapshot`); a detail page that opened empty re-fills via `goal_state_get`. A card that won't move usually means the device is offline — it goes **At Risk / "went offline"**. |
-| World-event chips are greyed out on the board | The strip unlocks only once the goal's initial plan is approved (on the chat). Approve first. |
+| **Advance day** does nothing / no "what happened" card | Nothing has changed for that sim day (a quiet day shows "nothing changed"), or no goals are running yet — create + approve a goal first. Check the cloud terminal shows the `day_advanced` frame going out. |
 | `[Errno 98] address already in use` (cloud) | A previous cloud holds :8000 → stop it (`ps -eo pid,args | grep uvicorn`, then `kill`). |
 | A UI came up on the wrong port (5175/5176) | A stale Vite holds the default port. Stop the old dev servers and restart. |
-| Demo data got dirty (approvals wrote to it) | Board **Reset week** on the goal's detail page, or restore only the runtime-mutated files (`git checkout -- data/appliances.json data/shopping_list.json data/inventory.json data/security.json data/notifications.json`) — do **not** `git checkout -- data/` wholesale (`daily_events.json`, thresholds, and the domain seeds are structure, not residue). |
+| Demo data got dirty (approvals/advancing wrote to it) | Restart the stack for a clean world, or restore only the runtime-mutated files (`git checkout -- data/appliances.json data/shopping_list.json data/inventory.json data/security.json data/notifications.json`) — do **not** `git checkout -- data/` wholesale (`daily_events.json`, thresholds, and the domain seeds are structure, not residue). (v3.2 dropped the per-goal Reset; a global reset is deferred.) |
 
 Clean shutdown: stop the four dev/service processes (uvicorn, GoalFlow.Device, the two Vite servers).
