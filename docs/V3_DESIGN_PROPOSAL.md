@@ -673,6 +673,55 @@ without new demo capability. The LLM uses what a goal needs (Budget featured in 
 plans; Notify/FamilyProfiles are present and proposable but unused this run) — the
 capability existing is the deliverable, not the LLM being forced to call it.
 
+## 12i. Amendments from M8 (2026-07-18)
+
+M8 added proactive suggestions and closed the negative-path honesty gaps. **Both run
+live**: the device scans its own inventory with no goal in flight and the board shows
+"Upcoming & Suggested" cards; tapping "+" turns one into a real goal; and a
+precheck-blocked goal now reads Waiting-with-the-reason instead of a false green.
+
+**The device got its first goal-LESS frame.** Every prior device frame was about a goal
+already dispatched. `suggestions` is the opposite — the device looking at the fridge and
+saying "you could do this." It is DETERMINISTIC (a scan, not an LLM) on purpose: the
+board shows the same suggestions every run, so a demo is repeatable, and gate 18 can pin
+it — an LLM there would make the board flicker between runs. A suggestion carries the
+goal TEXT it would become; `suggestion_action{accept}` submits that as an ordinary
+`user_goal` and it runs the full understand→plan→approve flow. So a suggestion never
+acts on its own — a person accepting it is what turns "you could" into a goal, the same
+line the whole system holds. Verified end to end: accepting "Expiring Soon" became a
+`meal_plan` goal.
+
+**The mirror pass held its discipline across a new frame in both directions.**
+`suggestions` (device→cloud→ui) and `suggestion_action` (ui→cloud) landed in CONTRACT.md,
+`contract.py`, the device `Contracts/`, and the board `contract.ts` in one pass, and
+gate 14 grew a nuance it didn't have: the two UIs are different shapes, so the chat mirror
+is *exempt* from the suggestion frames (a board surface it never sees) while the board
+mirror must carry them — and that exemption IS the "suggestions are a board concern"
+decision written down.
+
+**Three negative-path fixes, two of them real bugs:**
+
+- **A precheck-blocked goal read GREEN.** `on_plan_ready` set `state="waiting"` and a
+  downstream ternary immediately recomputed it to `"on_track"` — a goal the world had
+  blocked rendered On Track. Fixed by deciding state ONCE, most-severe-first. But the
+  board fix alone wasn't enough: the empty blocked plan flowed through the graph to
+  `relay_decisions`, which sent an empty approval, the device answered `status(done)`,
+  and the goal falsely COMPLETED. Added a `precheck_wait` graph terminal — a safety block
+  is "never" (→ done), a precheck block is "not yet", so it HOLDS at Waiting rather than
+  completing, and the card shows the failing probe's remediation ("you are signed out —
+  sign in and this will resume") as its next step. Honest waiting beats a lie that it
+  finished.
+- **A declined goal stuck forever.** Declining the understanding gate sent a raw `status`
+  that bypassed the board fold, so the card sat on "Confirm what the agent understood"
+  permanently. Now the cloud drops the card (a fresh snapshot — the board's only remove
+  mechanism, since `board_update` upserts). Verified: the card disappears on decline.
+- **The out-of-scope banner never cleared.** Nothing ever reset `notice`; now it
+  auto-hides after a few seconds and re-shows on a new decline.
+
+**Gate 18 was almost the sixth gate-that-can't-fail — caught in the same family.** Not
+this one, though: it was falsified (strip the restock source → it fails) before being
+trusted. The *cloud's* gate-17 heredoc-stdin bug from M7 was the fresh reminder to check.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the
