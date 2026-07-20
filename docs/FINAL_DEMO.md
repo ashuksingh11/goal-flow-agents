@@ -41,8 +41,12 @@ Four terminals. **These are the canonical commands.**
 ```bash
 # 1) cloud hub — binds 0.0.0.0:8000 and loads .env
 cd goal-flow-cloud-agent && source .venv/bin/activate && ./run.sh
-# 2) device agent — dials the cloud; bare --connect defaults to ws://localhost:8000/ws
-cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj -- --connect
+# 2) device agent — dials the cloud (bare --connect defaults to ws://localhost:8000/ws).
+#    Run against a SCRATCH world dir so the repo's ./data seed stays pristine and no
+#    stale mock-world state carries between runs. `rm -rf` first = a clean world each time;
+#    the dir self-seeds from ./data on first use. (data-*/ is gitignored.)
+cd goal-flow-device-agent-ubuntu && rm -rf data-run1 && \
+  dotnet run --project GoalFlow.Device.csproj -- --connect --data ./data-run1
 # 3) Agent Board — where a goal LIVES (port 5174)
 cd goal-flow-agent-board-ui && npm run dev
 # 4) chat UI — where you CREATE a goal (port 5173)
@@ -66,9 +70,15 @@ them):
 - **Board/chat (Ubuntu):** `npm run dev` — leave `VITE_WS_URL` unset. On the tablet browse
   to `http://<ubuntu-ip>:5174` (board) / `:5173` (chat); each connects to
   `ws://<ubuntu-ip>:8000/ws` automatically.
-- **Device (Tizen Hub):** the agent is re-synced to v3 (M9). Set `WS_URL=ws://<ubuntu-ip>:8000/ws`
-  in `goalflow.conf`, deploy the `.tpk`, watch `dlogutil GOALFLOW`. (An Ubuntu device
-  instead: `--connect ws://<ubuntu-ip>:8000/ws`.)
+- **Device (Tizen Hub):** the agent is in sync with ubuntu (re-synced v3.6.2). Set
+  `WS_URL=ws://<ubuntu-ip>:8000/ws` in `goalflow.conf`, deploy the `.tpk`, watch
+  `dlogutil GOALFLOW`. (An Ubuntu device instead: `--connect ws://<ubuntu-ip>:8000/ws`.)
+  - **No `--data` flag on Tizen** — a Tizen service takes no CLI args. It does the
+    scratch-world thing *automatically*: the bundled `data/` in the `.tpk` is **read-only**,
+    so on first run `DeviceConfig.ResolveDataDir()` seeds a **writable copy into the app Data
+    dir** and mutates only that — the packaged seed is never touched, and nothing writes into
+    the repo. To point it elsewhere (the `--data` equivalent) set `GOALFLOW_DATA_DIR=…` in
+    `goalflow.conf`; for a clean world, delete that on-device dir, or send `control: reset`.
 
 ### Run — several homes on ONE cloud (multi-session)
 
@@ -79,8 +89,8 @@ unique label. Two agents each need their OWN `--data` dir (the mock world is wri
 a fresh dir self-seeds from `./data`):
 
 ```bash
-dotnet run --project GoalFlow.Device.csproj -- --connect --data ./data-a --device-id hub-a --device-name "Kitchen Hub"
-dotnet run --project GoalFlow.Device.csproj -- --connect --data ./data-b --device-id hub-b --device-name "Cabin Hub"
+rm -rf data-a && dotnet run --project GoalFlow.Device.csproj -- --connect --data ./data-a --device-id hub-a --device-name "Kitchen Hub"
+rm -rf data-b && dotnet run --project GoalFlow.Device.csproj -- --connect --data ./data-b --device-id hub-b --device-name "Cabin Hub"
 ```
 
 Each UI auto-pairs with one agent; with several it shows a one-time picker (remembered per
