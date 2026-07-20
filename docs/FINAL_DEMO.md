@@ -1,4 +1,4 @@
-# GoalFlow — Final Demo Run-Sheet (v3.1)
+# GoalFlow — Final Demo Run-Sheet (v3.6)
 
 The end-to-end demo script for the **general goal-based agent** on a Samsung Family Hub.
 v3.1 splits the surfaces by moment: the **chat UI is where you CREATE a goal** (speak it,
@@ -152,6 +152,8 @@ device's sim clock is device-wide, so one tick moves the world for *every* goal 
      told me to look — not on some chat window I've closed."
 4. **The plan morphs in place.** The affected day updates with an **Updated** badge and an
    impact delta; the history logs the swap; back on the board the card clears its flag.
+   (Decline instead and the adaptation still resolves — the flag clears either way; the plan
+   just keeps its current shape. v3.6.2.)
 5. **Keep advancing.** Press **Advance day** a few more times — quiet days show *"nothing
    changed,"* busy days surface the next event and move the cards along.
    - *Say:* "The plan is alive across the week — it advances by the day and re-plans just the
@@ -161,19 +163,33 @@ device's sim clock is device-wide, so one tick moves the world for *every* goal 
 
 ## Act 3 — The board full of goals + the range
 
-1. **Several goals at once.** Start two more (chat surface, or board **New Goal**):
+1. **Several goals at once — the range (v3.4).** The demo isn't "AI meal planning": it's a
+   general Goal Runtime, so show goals that each prove a *different* capability. Start more
+   (chat surface, or board **New Goal**):
    - *"Get the house ready, we're away all next week."* — the goal **v2 refused** as
      out-of-scope. It runs now because the device advertises Security/Appliance/Reminders
      and the cloud judges against *that*: lock doors, arm security (pre-checked against the
      cameras), thermostat to eco, run the dishwasher before quiet hours, and use up the food
-     that would spoil while away.
+     that would spoil while away. *(smart-home orchestration + the precheck gate.)*
    - *"Plan my son Aarav's birthday party next Sunday for 20 kids."* — routes to the
-     birthday domain; costs the cake + supplies against the $120 cap.
-   Now the board shows **three cards** — Meal, Vacation, Birthday — each with its own
-   progress, next step, ETA and alerts, and the summary bar tallies **On Track / At Risk /
-   Waiting** at a glance.
-   - *Say:* "This is why the board exists — several long-running goals, one screen. The chat
-     started each one; the board runs them all."
+     birthday domain; costs the cake + supplies against the $120 cap. *(dynamic replanning
+     + budget + cross-app.)*
+   - *"Keep our kitchen stocked while spending less on groceries."* — `grocery_cost`:
+     restock to threshold, priced against the budget book; a `PlaceOrder` over the cap is
+     **blocked by the firm-tier safety rule**, not merely discouraged. *(continuous cost
+     optimisation + a real budget block.)*
+   - *"Cut our electricity bill 15% without hurting comfort."* — `energy_saving`: shift
+     heavy appliance runs off-peak, prefer eco cycles, kill standby waste — against a
+     **measurable target**. *(continuous optimisation with a number to hit.)*
+   Now the board shows a **card per goal** across five distinct domains. **Since v3.6 each
+   card is goals-first** — it leads with the outcome and progress bar, then three lines that
+   tell the goal's story: **✓** what's done · **⏳** what it's waiting on (tap to review) ·
+   **➡** what's next, with a **⚠** line if something needs attention. The summary bar tallies
+   **On Track / At Risk / Waiting** at a glance. (ETA and the full step list are one tap in,
+   on the detail page.)
+   - *Say:* "This is why the board exists — several long-running goals of different kinds,
+     one screen. The chat started each one; the board runs them all. Same five components
+     under every card."
 2. **The honest negative path.** Simulate the world breaking — flip a flag a goal needs
    (e.g. `smartthings_connected` false in the agent's `data/device_state.json`) and start a
    goal that needs it. The card goes **Waiting** — not a false green — with the fix as its
@@ -217,8 +233,12 @@ components) and `V3_DESIGN_PROPOSAL.md`.
   clock/trace. Zero product types; the fridge is a pack behind `IProductApiAdapter`.
 - *Three gates?* Safety ("never" — a deterministic SK filter vs hard constraints),
   Approval ("waiting on a person" — tiered), Pre-check ("not yet" — is the world ready).
-- *The board's numbers?* Derived from the device's real **task DAG** (`task_update`), never
-  from the clock. v2 had no task model; any progress bar then would have been fiction.
+- *The board's numbers?* Derived from what the device actually SAID — the real **task DAG**
+  (`task_update`) during planning, and once running, day-based against the goal's own window
+  (v3.2; the window spans the goal's deadline so one Advance day can't falsely finish a
+  goal — v3.6.1). Never invented. v2 had no task model; any progress bar then would have been
+  fiction. `alerts` track what's **outstanding** and clear when an adaptation is resolved —
+  approved *or* declined (v3.6.1/6.2).
 - *Two tiers?* Cloud (LangGraph) owns talk/memory + interrupt-based HITL; device (SK) owns
   local truth + is the only thing that calls tools.
 

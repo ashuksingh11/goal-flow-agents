@@ -850,6 +850,92 @@ hub) and with a real device (a goal-less advance_day fanned out to 2 goals + a r
 reads the daily feed); a global RESET (v3.2 dropped the per-goal reset — it needs cloud-side
 goal-clearing to keep the board in sync).
 
+## 12m. v3.4 — lock the five demo use cases (2026-07-19)
+
+§9 pruned use cases to demo need, but the richly-authored one was `meal_plan`, so the demo
+read as "AI meal planning" rather than a **general Goal Runtime**. v3.4 locks a five-use-case
+portfolio that each prove a different capability, and authors the mock world so all five
+adapt under the global Advance day.
+
+**The five (+ a kept sixth).** `meal_plan` (planning + grounding + daily adaptation),
+`birthday_party` (dynamic replanning + budget + cross-app), `vacation_prep` (smart-home
+orchestration + the precheck gate), **`grocery_cost`** (continuous cost optimisation + the
+FIRM-tier budget block), **`energy_saving`** (continuous optimisation against a MEASURABLE
+target, −15%). `guest_dinner` stays as an unheadlined sixth — it carries the
+allergen→safety-gate beat for free.
+
+**Almost no new plumbing — "a use case is an `IDomainObserver`."** The two new domains are
+two observers (`GroceryCostObserver`, `EnergySavingObserver`) copied from the birthday
+template; `CapabilityManager` derives the advertised `domains[]` from the registered
+observers, so nothing in `Harness/` changed and the capabilities golden moved by exactly the
+two new `{id,hint}` entries. Energy is deliberately **LIGHT**: no new plugin, so the grounding
+golden stayed at 18 functions — energy expresses itself through existing tools
+(`Appliance.RunProgram` eco/off-peak, `Reminders`, `Notify`), with real kWh riding in
+`appliances.json` (which `Appliance.ListAppliances` returns verbatim) and `energy.json`.
+
+**Data authoring is the centrepiece.** New `energy.json` (baseline, −15% target, tariff
+windows) and `grocery.json` (watchlist priced against the budget book), plus a reshaped
+`inventory.json` so ONE file serves three goals. Everything clock-relative
+(`activation_day_offset`, generic-clock rule); the 7-day world script stages one meaningful
+change per day so a single Advance day moves the *right* cards. Gate m7's domain set went
+4→6 ("six domains route"). **Deferred:** one world event material to multiple goals at once.
+
+## 12n. v3.5 — the planner is generic, not meal-shaped (2026-07-19)
+
+A user asked "plan my vacation for next week" and got seven dinners. Routing was correct
+(`vacation_prep`); the bias was entirely in the device's COMPOSE step, in three places, all
+fixed so the planner takes its shape from the contract's domain.
+
+**The compose prompt.** `BuildPlanningInstruction`'s only plan-shape rule was *"produce
+EXACTLY 7 dinner items"* and its only function catalog was labelled *"guest-dinner"* —
+omitting `Security.*`, so a vacation goal was never even offered `LockAllDoors`/`ArmSecurity`.
+Replaced with a per-domain **plan shape** plus one proposal catalog of the true **14**
+`[SideEffect]` functions. `BuildGroundingInstruction` likewise listed only 11 of the 18
+grounded reads; now all 18. `meal_plan`'s wording is preserved verbatim, so the meal sim and
+gate 4 are unchanged.
+
+**The standalone dispatch.** `Program.cs BuildLocalDispatch` (the `--goal --domain` CLI path)
+hardcoded a MEAL contract — `success_criteria: ["weekday dinners planned"]`, scope
+`{meal: dinner, days: Mon..Fri}` — for every domain. A wrong contract beats any prompt
+wording, so it's now per-domain (meal branch byte-identical).
+
+**Plan-item days from dates, not position.** `AssignPlanDays` was `plan.Take(7).Select((i,
+n) => Day = n+1)` for every domain — it silently dropped items past the seventh and numbered
+by list position. Day is not cosmetic: the device completes at `Plan.Max(p => p.Day)` and the
+cloud sizes progress from the same span, so a vacation checklist that all happens on departure
+evening became a five-DAY goal. Now `meal_plan` keeps the ordinal; every other domain derives
+`Day` from the item's own `when` date relative to the earliest item.
+
+**v3.5.1 — only the active shape.** Shipping all six plan shapes in the prompt grew it 53%
+and, on a reasoning model, pushed the compose toward its 90s deadline (seen live as "provider
+returned empty content"). The contract names one domain, so `PlanShapeRule(domain)` injects a
+single line — shorter and sharper. Each fix was reproduced on the exact user wording and
+verified by A/B against the pre-change build. **Lesson:** falsify with the user's exact input,
+never a paraphrase — the bug only fired on vague wording.
+
+## 12o. v3.6 — goals-first board cards + board-fold fixes (2026-07-19)
+
+**Goals-first cards.** The goal card ended in a 2×2 grid of machine facts (Next Step / ETA /
+Pending / Alerts), which read as a dashboard. It now reads as a story: three derived lines —
+**✓ what's done · ⏳ what it's waiting on · ➡ what's next** — plus a **⚠** line for
+danger-severity alerts (a failed precheck or safety block, which the old grid showed only as a
+dot). ETA and pending moved to the detail page. Board-UI-only: every line derives from fields
+`GoalSummary` already carries, so no contract change and no device work. Card titles stay as
+the interpreter writes them (outcome-led title wording deferred to its own milestone).
+
+**v3.6.1/v3.6.2 — the board fold told the truth.** Three bugs a user hit live, all in
+`board.py`: (1) **alerts never cleared** — `_bump` only counted up, so an approved adaptation
+left "1 alert — tap to review" forever and pinned the card to At Risk off the stale danger;
+alerts now clear once an adaptation is resolved. (2) A **DECLINED** adaptation resolves too,
+not only an executed one — the case a user most notices. (3) Alerts now mean **outstanding**,
+not ever-seen (a tick that answers one and raises another nets to the new one). (4) The
+progress window spans the **goal's own deadline** (`max` of plan-span and the goal's eta), not
+the plan's item spread — so a same-day plan no longer hits 100% after one Advance day (a v3.5
+consequence: real dates exposed a span the old position-numbering had padded by accident).
+Also: a pending proposal is no longer logged as `activity` — it hasn't happened, and logging
+it printed the same sentence as both ✓ and ➡. Gate 13 (`verify_board`) gained a falsified
+regression case per bug.
+
 ## 13. Verification
 
 - **Run the LATEST milestone's gate** in the device repo — `verify/m1/check.sh` today; each chains the

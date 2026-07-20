@@ -1,5 +1,13 @@
 # UX Event Redesign — the Living Meal Plan (event-driven week)
 
+> **SUPERSEDED (v3.2) — kept for design history.** This doc's premise — a per-goal chip
+> strip (`EventStrip`) that *replaces* the sim clock, scoped to `meal_plan` — was reversed.
+> v3.1 moved the world simulation to the board and v3.2 restored a **single global "Advance
+> day"** on the main board (a goal-less `control` that fans out over every active goal), and
+> v3.4 generalised adaptation past meals to six domains. Read `V3_DESIGN_PROPOSAL.md` §12k
+> (v3.1) and §12l (v3.2) for the shipped design. The `trigger_event` mechanism described
+> here still exists as the older per-goal path.
+
 **Status:** DESIGN SPEC — ready for implementation (Codex). No code in this doc is final source; it is the precise shape to build.
 **Scope:** interaction redesign only. Visual restyle (glass/gradients) is Phase 2, deferred (§8).
 

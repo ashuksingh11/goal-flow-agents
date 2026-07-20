@@ -3,12 +3,15 @@
 Start here. These docs cover the whole GoalFlow POC (a two-tier goal-based agent demo for the
 Samsung Tizen Family Hub).
 
-> **v3 is current (in design).** GoalFlow is being extended into a **multi-goal agent with an explicit
+> **v3 is current and SHIPPED (through v3.6).** GoalFlow is a **multi-goal agent with an explicit
 > harness**: five first-class components (Capability Manager, Safety Policy Engine, Pre-check Engine,
-> Task Manager, Product API Adapter), device-side two-altitude planning, and **Agent Board** — a new
-> repo, a glanceable dashboard over every running goal. Start with `V3_DESIGN_PROPOSAL.md`.
-> **v2 is the shipped architecture** the code still reflects; its docs remain accurate until M0 lands.
-> The v0/v1 docs (`SYSTEM_OVERVIEW`, `DEMO_RUNBOOK`) are kept for history.
+> Task Manager, Product API Adapter), device-side two-altitude planning, and **Agent Board** — a
+> glanceable dashboard over every running goal. M0–M9 landed, then v3.1 (board-centric flow), v3.2
+> (global Advance-day world tick), v3.4 (**five locked demo use cases** — a general Goal Runtime, not
+> "AI meal planning"), v3.5 (the planner is generic per-domain, not meal-shaped), and v3.6 (goals-first
+> board cards). Start with `V3_DESIGN_PROPOSAL.md`; its §12 amendment log records every shipped
+> milestone. **v2 is the prior architecture** (`V2_DESIGN_PROPOSAL.md`); the v0/v1 docs
+> (`SYSTEM_OVERVIEW`, `DEMO_RUNBOOK`) are kept for history.
 
 ## Cross-cutting (this folder)
 
@@ -17,16 +20,17 @@ Samsung Tizen Family Hub).
   concurrency, the contract-v3 delta, Agent Board, the use-case lineup, and the M0–M9 roadmap.
 - **[harness/](harness/)** — the v3 **architecture input**: the harness discussion doc, the device-agent
   TDS, and the Agent Board / execution-framework mocks. Design input, not frozen spec.
-- **[FINAL_DEMO.md](FINAL_DEMO.md)** ⭐ — the **final demo run-sheet** (v2): setup, the two-act demo
-  (meal + guest dinner) with narration, presenter mode, headless smoke test, and troubleshooting.
+- **[FINAL_DEMO.md](FINAL_DEMO.md)** ⭐ — the **final demo run-sheet** (v3.6): setup, the act-by-act
+  demo (chat creates a goal → board runs it → global Advance day → the five-use-case range on
+  goals-first cards) with narration, presenter mode, headless smoke test, and troubleshooting.
 - **[V2_DESIGN_PROPOSAL.md](V2_DESIGN_PROPOSAL.md)** — *(prior architecture)* the v2 design: the 11
   domain-agnostic **harness modules**, capability vs steering modules, the use-case catalog, and what
   changed from v1. Superseded by v3 §3, which maps the 11 onto the five components.
 - **[UX_CONFIRM_UNDERSTANDING.md](UX_CONFIRM_UNDERSTANDING.md)** — current design spec: the
   confirm-understanding HITL gate (Understanding card) between grounding and planning.
-- **[UX_EVENT_REDESIGN.md](UX_EVENT_REDESIGN.md)** — current design spec: the event-driven meal
-  demo (World-events chip strip, `trigger_event`, morph-the-day-card animation, cloud→device
-  handoff visualization).
+- **[UX_EVENT_REDESIGN.md](UX_EVENT_REDESIGN.md)** — *(superseded by V3_DESIGN_PROPOSAL §12l, v3.2)* the
+  per-goal event-driven meal demo (World-events chip strip, `trigger_event`). v3.2 removed the per-goal
+  EventStrip and replaced it with one global **Advance day** on the main board; kept for design history.
 - [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) — *(v1, historical)* original architecture + Contract v0.
 - [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) — *(v1, historical)* the milestone-wise runbook.
 
