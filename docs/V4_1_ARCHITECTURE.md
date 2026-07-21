@@ -241,6 +241,18 @@ frames (hence `DEVICE_EXEMPT`).
 
 ## 9. Open questions surfaced by this design (for the code phase / v4.2)
 
+**Resolved by the user (2026-07-21):**
+- **Q1 superseded create-phase goal** → *acceptable for v4.1*. No auto-abort; a goal
+  superseded mid-create lingers at its gate, reachable via the board's drill-in.
+- **Q3 `notice.kind:"declined"`** → *ADD it in v4.1*. On a declined understanding gate
+  (and on an aborted create flow), the cloud emits BOTH `chat_ui_close {goal_id}` AND a
+  `notice { kind:"declined", message }` so the input (Bixby) surface can speak the
+  cancellation. `notice.kind` is now `"out_of_scope" | "declined"` (no longer reserved).
+- Q2 (input-surface `suggestions`) remains deferred to v4.2.
+
+Original list:
+
+
 1. **Multiple concurrent create phases.** The cache holds ONE create-phase goal per
    session; a second `user_goal` before the first close supersedes it. Fine for the
    one-webview Bixby flow, but a goal superseded mid-create is still alive at its
