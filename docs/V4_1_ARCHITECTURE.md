@@ -266,3 +266,34 @@ Original list:
    path sends a terminal `status`, not a `notice`. If Bixby should *speak* a
    cancellation confirmation, the code phase may want to promote it. Not required for
    the bracket to work.
+
+## 10. Fixes after the live smoke (2026-07-21)
+
+The build-clean + WS-smoke pass used a one-proposal goal, so it missed the first two of
+these. All found by driving the real browser stack end-to-end; all verified live.
+
+1. **Multi-proposal approval must be batched (chat-ui `6b39ea8`).** The chat-ui sent one
+   `approval` frame per proposal click; the device resumes the whole plan on the FIRST
+   frame (its `decisions[]` is the complete set — now stated in CONTRACT.md's `approval`
+   section), so later proposals (a firm grocery order) were silently dropped and the
+   webview closed after the first click. `sendDecisions` now records each click locally
+   and emits ONE `approval` with every decision once all approval-required proposals are
+   decided. No cloud/device change — `chat_ui_close`-on-approval is correct once the frame
+   is complete.
+2. **Offline-device self-heal (chat-ui `8752f5f`, board-ui `ade4869`, bixby-ui `8e0dafc`).**
+   The cloud's `devices` list is online-only (offline devices omitted), and the UIs treated
+   a truthy `hello_ack.device_id` as permanently bound — so a stale `?device=`/`localStorage`
+   pairing bound to an empty session and declined every goal with `no_capabilities`
+   ("can't see a device"), never showing the picker. Each UI now treats "bound id absent
+   from the live `devices` list" as offline and self-heals: auto-rebind (`select_device`)
+   to the sole online device, else show the picker. (CONTRACT.md `devices` section documents
+   the online-only + self-heal contract.) No cloud change — kept the list online-only to
+   avoid ghost devices cluttering pickers.
+3. **Planning-progress UX (chat-ui `8752f5f`, device `305eee5`).** Plan compose is a
+   NON-streaming ~60-90s LLM call — zero frames — so the create stage looked frozen, and
+   the device separately dumped the raw plan JSON onto the `thinking` channel. Device: removed
+   the two `_trace.ThinkingAsync(raw)` emits (kept `AddAssistantMessage`; grounding's genuine
+   streamed prose thinking untouched). chat-ui: renders the prose thinking live, suppresses
+   JSON-shaped thinking, and shows a rotating text-only indicator ("Composing your plan…" ↔
+   "Checking budget & constraints…" + elapsed counter) during `phase:"planning"`. No contract
+   change.
