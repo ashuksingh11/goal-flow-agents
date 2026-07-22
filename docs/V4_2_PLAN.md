@@ -50,6 +50,16 @@ Format: **"Tue, Jul 22"** (weekday, short month, day).
   shows the date. New `formatWhen` helper.
 - **Chat UI:** `PlanCard` + `StatusTimeline` "Day N" → date.
 
+## V4.2 fix — adapted dinner keeps its date (2026-07-22)
+
+Advancing a day and adapting a dinner shifted that row's date. The adapt prompt asked the model
+for a `"when"`, and `ApplyPatch` only kept the original date when the incoming one was empty — so
+the model's emitted date overrode the correct one. An adaptation changes the DISH, not the date.
+Fix (date is device-owned): `NormalizeAdaptationPatch` forces `When=target.When`; `ApplyPatch`
+now ALWAYS restores an existing item's `When`; `"when"` dropped from the adapt prompt schema.
+Verified headless (`--simulate-week`): five consecutive adaptations each kept the correct
+sequential date (Day 2→07-23 … Day 6→07-27 = anchor + Day-1). Ported to Tizen; builds + gates pass.
+
 ## Out of scope (flagged)
 
 Progress window is `start + span` (span = 7), so a 7-day plan hits 100% on day 8, not day 7 —
