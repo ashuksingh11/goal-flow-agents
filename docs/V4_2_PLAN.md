@@ -60,3 +60,28 @@ a separate minor off-by-one, not touched here.
 - Device gate chain m0–m8 + build; feed-alignment check.
 - Live: create a meal goal → advance → the event edits **today's** dinner, and every surface
   shows "Tue, Jul 22" (browser via `agent-browser`).
+
+## V4.2 follow-up — debuggability + "watch it think" (2026-07-22)
+
+Two more user-reported fixes.
+
+**Meaningful logs (fix #1).** Added compact `key=value` decision/timing logs matching the
+existing style: device `grounding_done`/`compose_done` (+elapsed_ms, counts),
+`world_change_material` (target_day), `world_tick`, `approval_received` (approved/declined);
+cloud `ui_bound` (surface + device_online). `agent_event` Info lines are now compact
+(`tool_call seq=3 Inventory.ListItems`) instead of full-JSON dumps.
+
+**`agent_event thinking` — show it properly, not remove (fix #2).** The frames drive chat-ui's
+live reasoning, but the UI previously showed mostly HARDCODED phase strings and only the latest
+140 chars of the real stream — so the WS/log flood bought almost no UX. Two parts:
+- *UI:* `AgentStream` now renders the FULL streamed reasoning as a scrolling, auto-scrolling
+  transcript (accent rail + streaming caret); planning indicator + tool chips stay below.
+- *Log hygiene:* the streamed per-chunk `thinking` drops to **Debug** on both device
+  (`Trace.EmitAsync`) and cloud (`log_frame`, `_HIGH_FREQUENCY_TYPES`), so the Info stream is a
+  clean lifecycle timeline; `--verbose` / `LOG_LEVEL=DEBUG` restores it. Verified live: 0
+  thinking/agent_event lines at Info; transcript streams the real reasoning.
+
+**Tizen:** ported all v4.2 device changes (date fix + logging) to `goal-flow-device-agent-tizen`
+`v4.2` (files were byte-identical to ubuntu; wholesale copy); builds clean. `DeviceHost.cs`
+`SetMinimumLevel(Information)` (LOG_LEVEL via goalflow.conf) suppresses Debug like ubuntu and
+maps to dlog priorities (thinking→D, meaningful→I).
