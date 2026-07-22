@@ -85,3 +85,16 @@ live reasoning, but the UI previously showed mostly HARDCODED phase strings and 
 `v4.2` (files were byte-identical to ubuntu; wholesale copy); builds clean. `DeviceHost.cs`
 `SetMinimumLevel(Information)` (LOG_LEVEL via goalflow.conf) suppresses Debug like ubuntu and
 maps to dlog priorities (thinking→D, meaningful→I).
+
+## V4.2 fix — configurable LLM call timeouts (2026-07-22)
+
+Planning kept cancelling mid-compose with `transient provider error (TaskCanceledException)`.
+Cause: the non-streaming compose call ran under a HARDCODED 90s total deadline (`Deadline` →
+`CancelAfter`), so a large/slow model (deepseek-v4-pro, gpt-oss-120b) or provider load pushed a
+legitimate compose past 90s → the CTS cancelled the socket read → retried, wasting 90s each time.
+Fix: raise defaults (compose 90→180s, grounding stream 150→210s) and make both tunable via
+`LLM_CALL_TIMEOUT_SECONDS` / `LLM_STREAM_TIMEOUT_SECONDS` — through `AgentSettings`, overridden
+only when set to a positive int (floored at 10s). Env on ubuntu (`.env`), `goalflow.conf` on Tizen
+(via `DeviceConfig`). Startup logs `llm_budgets model=… call_timeout_s=… stream_timeout_s=…`.
+Ported to Tizen (`DeviceHost` threads settings into `CreateAgent`); both build; gates m0–m6 pass;
+verified default 180/210 vs env override 60/90.
