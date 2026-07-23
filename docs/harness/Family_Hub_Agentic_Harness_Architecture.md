@@ -374,3 +374,13 @@ Execution Plan
 -   Personalized experiences
 -   SmartThings ecosystem integration
 -   Simplified intelligent home management
+
+# Making the harness visible (v5)
+
+The engines above run silently inside the coarse `phase` stream. **v5** surfaces each one as
+a live **Harness Pipeline**: the device emits an `agent_event { event: "harness" }` beat
+around every engine (`Trace.HarnessAsync`), and the UI renders them lighting up in fire order
+— Pre-Check → Capability Manager → Grounding → Planner → Safety Policy → Task Manager →
+Approval on the chat surface, and Monitor & Adapt → Safety → Task Manager as a ribbon on the
+board during advance-day. A config-gated demo dwell (`HARNESS_DWELL_MS`) lets each engine hold
+the spotlight so an audience can watch it work. See [`../V5_PLAN.md`](../V5_PLAN.md).
