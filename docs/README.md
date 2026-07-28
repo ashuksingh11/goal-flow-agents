@@ -20,6 +20,16 @@ Samsung Tizen Family Hub).
   concurrency, the contract-v3 delta, Agent Board, the use-case lineup, and the M0–M9 roadmap.
 - **[harness/](harness/)** — the v3 **architecture input**: the harness discussion doc, the device-agent
   TDS, and the Agent Board / execution-framework mocks. Design input, not frozen spec.
+- **[V5_1_WORKING_COLUMN.md](V5_1_WORKING_COLUMN.md)** ⭐ — **current**: the chat surface is one
+  working column (receipts / one focus card holding the transcript / ghosts, then the plan
+  landing into reserved slots). Height conservation, honest per-engine durations, the paced plan
+  reveal + the `plan_progress.total` contract addition, and the transcript JSON fix.
+- **[V5_PLAN.md](V5_PLAN.md)** — v5: making the harness visible (Harness Pipeline, presenter
+  theater, board ribbon, light-grey theme) and the follow-up that fixed the tail engines
+  flashing past. Superseded on the chat surface by V5_1.
+- **[V4_PLAN.md](V4_PLAN.md)** / **[V4_1_ARCHITECTURE.md](V4_1_ARCHITECTURE.md)** /
+  **[V4_2_PLAN.md](V4_2_PLAN.md)** — v4: the Bixby entry point + surface-aware delivery, and
+  advance-day date targeting with real dates.
 - **[FINAL_DEMO.md](FINAL_DEMO.md)** ⭐ — the **final demo run-sheet** (v3.6): setup, the act-by-act
   demo (chat creates a goal → board runs it → global Advance day → the five-use-case range on
   goals-first cards) with narration, presenter mode, headless smoke test, and troubleshooting.
