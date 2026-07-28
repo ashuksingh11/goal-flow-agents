@@ -93,6 +93,37 @@ it silently made the agent look like it had stopped thinking. What actually carr
 working" signal through the quiet stretch is the tool-call chips inside the focus card and the
 receipts accumulating above it.
 
+## The transcript belongs to one engine
+
+Thinking fragments are attributed to the engine running **on the wire**
+(`HarnessState.wireActive`, updated when a beat is accepted) — never to `activeModule`,
+which is the *painted* engine and lags behind by the render floor. Each focus card renders
+only its own engine's words. Without this the transcript was global, so Planner and Safety
+repeated grounding's narration as if they had said it — and since the device only narrates
+during grounding, that is most of the run.
+
+The same rule applies to the card's fallback line: `phase` frames are not paced, so by the
+time Grounding is painted the phase has usually moved to planning, and a phase-derived
+caption put "Composing your plan…" under Grounding. The rotating planner line is keyed to
+the engine holding the card, and an engine with nothing to say relies on its own note.
+
+## Every engine gets long enough to be read
+
+The render floor is a paint-timing knob only — order, verdicts and reported latency are
+exactly what the device sent. v5.1 raised it because each engine now gets a full card
+rather than a row, and half a second is not enough to read a name, a note and a verdict:
+`HARNESS_ACTIVE_FLOOR_MS` 550 → **1100 ms**, `HARNESS_RESOLVE_STEP_MS` 150 → **260 ms**,
+`HARNESS_SETTLE_MS` 900 → **1600 ms**.
+
+The settle window matters more than it looks. `working` goes false the moment
+`present_plan` lands, which is *before* the last beats have been read — so Approval, always
+the last engine, had its card torn down within a frame of resolving (**measured: 57 ms**).
+The last engine now keeps the card through the settle window, shown resolved in green with
+its verdict.
+
+Measured at `HARNESS_DWELL_MS=0`, focus-card time per engine, before → after:
+Safety **1.15s → 1.84s**, Task Manager **1.10s → 1.36s**, Approval **0.06s → 1.36s**.
+
 ## Durations tell the truth
 
 Receipts carry the engine's measured wall-clock. Two rules keep that honest:
