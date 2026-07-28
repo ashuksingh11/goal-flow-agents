@@ -49,6 +49,15 @@ cd goal-flow-device-agent-ubuntu && rm -rf data-run1 && \
   dotnet run --project GoalFlow.Device.csproj -- --connect --data ./data-run1
 # 3) Agent Board — where a goal LIVES (port 5174)
 cd goal-flow-agent-board-ui && npm run dev
+> **v5.1 — what the chat surface looks like now.** One **working column**: engines that have
+> finished collapse into receipts carrying their verdict and their real duration
+> (`Grounding · grounded · 59.3s`), the engine that is running holds a single focus card with
+> the live reasoning transcript and its tool calls inside it, and the ones still to come sit
+> below as ghosts. The plan lands underneath, one row at a time, into slots reserved before the
+> content arrives. Nothing scrolls the page — say that out loud on stage, it is the point. The
+> phase rail is gone (it was a second progress indicator for the same run). See
+> [V5_1_WORKING_COLUMN.md](V5_1_WORKING_COLUMN.md).
+
 # 4) chat UI — where you CREATE a goal (port 5173)
 cd goal-flow-agent-chat-ui && npm run dev
 ```

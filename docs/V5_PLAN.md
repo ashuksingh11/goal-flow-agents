@@ -112,3 +112,15 @@ to show, so the pipeline would stop being a readable sequence.
 
 Board ribbon is unaffected: on the adapt path `Monitor & Adapt` wraps a real LLM call, and its
 Safety / Task Manager beats are resolve-only (no `active`), so nothing flashes.
+
+
+## Superseded on the chat surface by v5.1
+
+The pipeline panel described above (a 7-row list beside the reasoning transcript, under the
+phase rail) was replaced on the chat surface by the **working column** — see
+[V5_1_WORKING_COLUMN.md](V5_1_WORKING_COLUMN.md). The engines, their order, their verdicts and
+the beat contract are unchanged; what changed is that resolved engines collapse into permanent
+receipts, exactly one focus card holds the transcript that produced it, and the column's height
+is conserved so the screen never scrolls. The render floor and the settle window described in
+the follow-up above still exist, but they are now polish rather than the only thing keeping the
+tail engines visible. The presenter theater and the board ribbon are unchanged.
