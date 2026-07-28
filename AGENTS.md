@@ -34,7 +34,13 @@ read the relevant one before coding there.
 
 ## Docs in this repo (current vs historical)
 
-- **Current:** `docs/V3_DESIGN_PROPOSAL.md` ⭐ (the canonical v3 architecture; its §12
+- **Current (v5.1):** `docs/V5_1_WORKING_COLUMN.md` ⭐ — the chat surface is one **working
+  column** (receipts / one focus card holding the transcript / ghosts, then the plan landing
+  into reserved slots). Height conservation, per-engine durations stamped on arrival, the paced
+  plan reveal + the `plan_progress.total` contract addition, and the transcript JSON fix.
+  `docs/V5_PLAN.md` is v5 (making the harness visible) and stays current for the presenter
+  theater and the board ribbon.
+- **Current (architecture):** `docs/V3_DESIGN_PROPOSAL.md` ⭐ (the canonical v3 architecture; its §12
   amendment log records every shipped milestone through v3.6), and `docs/FINAL_DEMO.md`
   (the v3.6 presenter run-sheet). `docs/UX_CONFIRM_UNDERSTANDING.md` is still current (the
   confirm-understanding gate). `docs/V2_DESIGN_PROPOSAL.md` is the prior architecture,
