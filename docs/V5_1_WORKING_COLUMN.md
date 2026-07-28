@@ -54,16 +54,16 @@ Transcript helpers moved to `lib/reasoning.ts`.
 
 The first cut made the focus card absorb every spare pixel, so the column's total height was
 invariant from the first beat to the last. Mathematically neat, visually wrong: the device
-often has only a line or two to show (see "How little the device actually says"), and that line
-sat alone in a box half the height of the screen.
+usually has only a line or two to show (see "How little the device actually says"), and that
+line sat alone in a box half the height of the screen.
 
-The rule now is **fit the content, cap the growth**: the focus card grows with what it has to
-say, its transcript scrolls at its own cap (`max-height: 34vh`), the run column is capped at
-62% of the column, and the outcome region takes whatever is left. The page still never scrolls
-— that guarantee comes from the caps, not from one element swallowing the slack (verified:
+The rule now is **fit the content, cap the growth**. The focus card grows with what it has to
+say and its transcript scrolls at its own cap (`max-height: 34vh`); the run column is capped at
+62% of the column; the outcome region takes whatever is left. The page still never scrolls —
+that guarantee comes from the caps rather than from one element swallowing the slack (verified:
 `document.body.scrollHeight > window.innerHeight` is false in every state at 1080×1920).
 
-Measured on a live run: with a one-line note the focus card is **118px** (was ~750px); with a
+Measured live: with a one-line note the focus card is **118px** (it was ~750px); with a
 five-line transcript, **287px**; settled, the run column drops to **273px** of receipts and the
 plan takes **1461px**.
 
@@ -82,16 +82,16 @@ Two consequences fell out of the same property:
 
 ## How little the device actually says
 
-Worth knowing before tuning anything else in this area: over a full ~3-minute run the device
+Worth knowing before tuning anything in this area: over a full ~3-minute run the device
 streamed **578 bytes** of prose, all of it in one burst at the top of grounding, then nothing
 through the tool loop and nothing at all during the planner's single non-streaming call.
-Captured off the wire, not inferred.
+Captured off the wire with a throwaway `ui` client, not inferred.
 
 That is why the transcript looks sparse, and why the JSON fix below **redacts rather than
-deletes** — before it, the assembled-context blob was most of what filled the card, so
-removing it silently made the agent look like it had stopped thinking. What genuinely carries
-the "it is working" signal through the quiet stretch is the tool-call chips inside the focus
-card and the engine receipts accumulating above it.
+deletes**: before it, the assembled-context blob was most of what filled the card, so removing
+it silently made the agent look like it had stopped thinking. What actually carries the "it is
+working" signal through the quiet stretch is the tool-call chips inside the focus card and the
+receipts accumulating above it.
 
 ## Durations tell the truth
 
@@ -154,15 +154,15 @@ disappear; it reached the stage as mangled pseudo-prose
 (`"time_window": "start": "2026-07-28",`), which is worse than either showing it or hiding it.
 
 A blob can only be recognised once the text is **whole**. Fragments now accumulate verbatim
-(the raw stream stays intact for the presenter feed) and `stripJsonBlobs` redacts balanced JSON
+(the raw stream stays intact for the presenter feed) and `stripJsonBlobs` handles balanced JSON
 at render time: string-literal aware, so a `}` inside a quoted value cannot close a blob early,
 and an unterminated blob — one still arriving — is cut to the end.
 
-**Redacted, not deleted.** Each blob is replaced by one marker line describing it from its own
+**Redacted, not deleted.** Each blob becomes one marker line describing it from its own
 contents — `⟨context · time_window, family, hard_constraints⟩`, or `⟨context · 7 items⟩`, or
 plain `⟨context⟩` when it will not parse (models emit near-JSON). Nothing is inferred or
-invented, and the reader can see that context WAS gathered instead of watching the card sit
-empty. Adjacent markers left by one blob collapse to the most informative. Gate:
+invented, and the reader can see that context *was* gathered instead of watching an empty card.
+Adjacent markers left by a single blob collapse to the most informative one. Gate:
 `npx tsx verify/transcript.check.mts` (8 cases, including the exact observed failure and one
 asserting ordinary prose survives byte-identical).
 
