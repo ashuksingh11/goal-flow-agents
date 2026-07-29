@@ -245,11 +245,30 @@ Three things M2 learned:
   `BudgetPlugin`. `DeviceHost.cs` needed the same two registrations Ubuntu's `Program.cs`
   got. This is the second time host wiring has hidden behind a green build.
 
-**M3 — Household envelope (cross-goal)**
-Envelope constraint, effective-cap resolution at arm time, re-resolution on approval and day
-tick.
-*Gate:* two live goals; approving one's order shrinks the other's headroom and the other
-re-plans.
+**M3 — Household envelope (cross-goal) — ✅ SHIPPED**
+Envelope constraint on every dispatch; `IPolicyResolver` (harness seam) +
+`FamilyHubPolicyResolver` (product arithmetic) narrow the ceiling at arm time;
+`ReResolveAsync` recomputes on approval and each day tick; `ShoppingList.PlaceOrder`
+accrues into `budget.spent`; `GroceryCostObserver` raises a material squeeze.
+*Gate:* `verify/v6-m3/check.sh`, gate 20 — an approved order consumes the household
+budget, another goal's ceiling falls, and that goal notices with a steer.
+
+What M3 turned up:
+
+- **The spend never moved.** Approving an order marked the list "ordered" and left
+  `budget.spent` untouched, so every goal saw the same headroom no matter what the others
+  bought. Without that one write the envelope would have been decoration — the contract
+  would have looked right and nothing would have been shared.
+- **My first "don't compound" assertion could not fail.** Narrowing is a `min()`, so
+  re-narrowing an already-narrowed cap is idempotent by construction. The edge that *can*
+  break is the opposite one: when the envelope frees up (a refund, a new period), a ceiling
+  computed from the last effective value can never climb back. That is now the row, and it
+  is the one that fails when re-resolution reads the wrong block.
+- **The invariant survived intact.** `SafetyRule` promises rules read `constraints.hard`
+  and nothing else. A rule reaching into `budget.json` mid-evaluation would have broken it
+  quietly; the arithmetic happens once, before arming, and what gets armed is a plain hard
+  block. A resolver that throws arms the **dispatched** policy — a bad world read loses the
+  tightening, never the gate.
 
 **M4 — Chat capture beat**
 Capture → confirm → persist with `source: chat`; goal-less capture path; chat UI renders
