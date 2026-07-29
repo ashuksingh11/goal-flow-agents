@@ -189,16 +189,27 @@ The cloud terminal shows the resolution: `graph_node_exit node=load_memory domai
 
 ### 1b-ii · It is enforced, not just displayed
 
-The honest proof is deterministic and offline — the LLM will not reliably propose a
-violating action on cue, so **do not stake the demo on catching one live**:
+**Where the block actually happens:** side-effecting tools are not exposed while the model
+plans, so the window constraints bite at **actuation** — the moment you tap **Approve**. A
+refused proposal comes back as **blocked** with the reason (*"…inside away_window … nobody
+is home"*), it is **not** marked executed, and the rest of the approval still goes through.
+
+*Live:* on a vacation goal, ask for something mid-trip — *"…and run the dishwasher on
+Wednesday while we're away"* — then approve the appliance proposal. **Not guaranteed**: the
+planner may decline to propose it at all, which is the model doing the right thing. Do not
+stake a stage demo on catching it.
+
+*Deterministic (this is the proof to show):*
 
 ```bash
 cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh
 ```
 
-Gate 6 (28 cases) includes the new rows: a dishwasher run scheduled **inside the away
-window** is blocked *"nobody is home"*; an 18:00 run is blocked on an energy goal (peak
-tariff) and **allowed** on a guest dinner, because that goal carries no peak window.
+Gate 6 (28 cases) has the rule rows: a dishwasher run **inside the away window** is blocked
+*"nobody is home"*; an 18:00 run is blocked on an energy goal (peak tariff) and **allowed**
+on a guest dinner, because that goal carries no peak window. Gate 21 drives the **real
+approval path** and proves the refusal is reported as a refusal rather than as success —
+which is exactly what it used to do.
 
 ### 1b-iii · Two goals, one wallet (the household envelope)
 
@@ -235,11 +246,17 @@ since v4.1), say a *statement* rather than a goal:
 > *Say:* "It heard a household rule and asked before believing it. The model proposes; the
 > person disposes. Nothing is written by silence."
 
-**⚠ After demoing capture, restore the store** — capture writes to the real seed:
+**Keep the seed clean.** Capture WRITES to the constraint store, so point the cloud at a
+scratch copy before the demo — the cloud's equivalent of the device's `--data`:
 
 ```bash
-cd goal-flow-cloud-agent && git checkout -- data/memory/family_profile.json
+# in goal-flow-cloud-agent/.env (or exported before ./run.sh)
+GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json
 ```
+
+The file is created and seeded from the repo's copy on first use; delete it for a clean
+household. If you forget and demo against the seed, restore it with
+`git checkout -- data/memory/family_profile.json`.
 
 ---
 
@@ -390,7 +407,7 @@ cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj 
 | `[Errno 98] address already in use` (cloud) | A previous cloud holds :8000 → stop it (`ps -eo pid,args | grep uvicorn`, then `kill`). |
 | A UI came up on the wrong port (5175/5176) | A stale Vite holds the default port. Stop the old dev servers and restart. Ports are assigned in START ORDER from 5173 — read each terminal's printed URL rather than assuming. |
 | **v6:** the capture card never appears | Detection is an LLM call. Say a bare statement with no request in it ("we've gone vegan"), not "plan vegan dinners" — the second one is a goal, and it is treated as one. The cloud log shows `node=detect_constraints proposed=N statement_only=…`. |
-| **v6:** `data/memory/family_profile.json` changed after a demo | Expected — an accepted capture writes there. Restore with `git checkout -- data/memory/family_profile.json`. (The write also reflows the file's formatting, so the diff looks bigger than the one entry added.) |
+| **v6:** `data/memory/family_profile.json` changed after a demo | An accepted capture wrote there. Set `GOALFLOW_PROFILE_PATH` to a scratch copy to stop it happening, and restore with `git checkout -- data/memory/family_profile.json`. (The write also reflows the file's formatting, so the diff looks bigger than the one entry added.) |
 | **v6:** the device goes offline after a cloud restart | Restart the device agent too. Its reconnect backoff can outlast your patience; the board shows the goal **At Risk** in the meantime. |
 | **v6:** a vacation goal still shows a $120 cap | You are running an old cloud. The resolution lives in `memory/store.py`; confirm with `.venv/bin/python scripts/verify_constraints.py` (gate 15). |
 | Demo data got dirty (approvals/advancing wrote to it) | Restart the stack for a clean world, or restore only the runtime-mutated files (`git checkout -- data/appliances.json data/shopping_list.json data/inventory.json data/security.json data/notifications.json`) — do **not** `git checkout -- data/` wholesale (`daily_events.json`, thresholds, and the domain seeds are structure, not residue). (v3.2 dropped the per-goal Reset; a global reset is deferred.) |
