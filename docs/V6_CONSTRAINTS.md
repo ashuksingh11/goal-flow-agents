@@ -220,14 +220,30 @@ Two things M1 learned that the design did not predict:
   it has to resolve *somewhere*: numbers go to the stricter (lower) value, windows keep the
   incumbent and log, because two windows do not order meaningfully.
 
-**M2 — Enforcement parity + de-dup (device + Tizen)**
-`peak_hours` rule instance in `policy.json`; new date-window rule kind for `away_window`;
-`BudgetPlugin.GetBudgetStatus` reports the **dispatched** cap via a `SafetyFilter` accessor;
-`budget.json` drops `cap`, `family.json` drops its restated medical note; check whether
-`vacation.json.away` should follow the same path (it is currently read only into the
-observer's world snapshot). Tizen re-sync per the usual recipe.
-*Gate:* a dishwasher run scheduled inside the away window is **blocked and explained**; a
-heavy run inside the peak window is blocked on an energy goal and allowed on a guest dinner.
+**M2 — Enforcement parity + de-dup (device + Tizen) — ✅ SHIPPED**
+`peak_hours` rule instance in `policy.json` (no engine code); new `date_window_block` rule
+kind for `away_window`; `BudgetPlugin.GetBudgetStatus` reports the **dispatched** cap;
+`budget.json` drops `cap`, `vacation.json` drops `away` (nothing read it), `family.json`
+gains a warning that a `dietary` entry there enforces nothing. Tizen re-synced.
+*Gate:* `verify/v6-m2/check.sh` chains M8. Gate 6 grew 15 → 28 cases; gate 19 is the
+de-dup. A dishwasher run inside the away window is blocked and explained; a heavy run
+inside the peak window is blocked on an energy goal and allowed on a guest dinner.
+
+Three things M2 learned:
+
+- **A dependency cycle that deadlocks silently.** Injecting `SafetyFilter` into
+  `BudgetPlugin` closes a loop — filter → `CapabilityManager` → plugin catalog → plugin →
+  filter — and the DI container resolves it by hanging at startup with *no output at all*.
+  Fixed at the design level, not with a lazy handle: `ArmedPolicies` (the store, depends on
+  nothing) split from `SafetyFilter` (the enforcer), read through `IActivePolicy`.
+- **A gate row can pass for the wrong reason.** "A bare `22:00` is not a date" passed
+  because of a length check, not the strict ISO parse it was written to guard — and only
+  because the fixture window sat in the future. Fixed by straddling today and adding
+  `22:00:00.000`, which a loose parse turns into today and blocks.
+- **A clean `dotnet build` does not prove the Tizen port works.** DI resolves at RUNTIME,
+  so the copied core compiled perfectly against a host that could not construct
+  `BudgetPlugin`. `DeviceHost.cs` needed the same two registrations Ubuntu's `Program.cs`
+  got. This is the second time host wiring has hidden behind a green build.
 
 **M3 — Household envelope (cross-goal)**
 Envelope constraint, effective-cap resolution at arm time, re-resolution on approval and day
