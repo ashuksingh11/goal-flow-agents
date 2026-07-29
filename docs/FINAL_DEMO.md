@@ -1,4 +1,4 @@
-# GoalFlow — Final Demo Run-Sheet (v3.6)
+# GoalFlow — Final Demo Run-Sheet (v3.6, + v6 constraints)
 
 The end-to-end demo script for the **general goal-based agent** on a Samsung Family Hub.
 v3.1 splits the surfaces by moment: the **chat UI is where you CREATE a goal** (speak it,
@@ -13,6 +13,12 @@ takes over.
 > approves; the agent keeps adapting as the world changes. The harness is five generic
 > components; the fridge is a swappable product pack behind one interface.
 
+> **v6 (newest) — constraints that fit the goal.** Household rules are now sourced, scoped
+> and expiring, and resolved **per goal**: a trip carries a travel cap and an away window
+> where a meal week carries the $120 grocery cap; two goals draw on one **household
+> envelope**; and a rule you simply *say* ("we've gone vegan") is captured, confirmed, and
+> enforced from then on. **Act 1b** below is the v6 walk-through.
+
 > **The two surfaces (say it once):** *Chat = create. Board = live.* You talk to the agent
 > on the chat surface to start a goal and sign off on its plan; then the board drives the
 > goal's whole life — you watch it, simulate the world, and steer it there. Both are just
@@ -22,7 +28,7 @@ takes over.
 
 ## 0. One-time setup
 
-**Four surfaces**, three of them services (`~/ashu/git/`). Put your OpenRouter key in the
+**Five surfaces**, three of them services (`~/ashu/git/`). Put your OpenRouter key in the
 two `.env` files and use a **paid** model (free `:free` models are rate-limited):
 
 ```bash
@@ -58,9 +64,14 @@ cd goal-flow-agent-board-ui && npm run dev
 > phase rail is gone (it was a second progress indicator for the same run). See
 > [V5_1_WORKING_COLUMN.md](V5_1_WORKING_COLUMN.md).
 
-# 4) chat UI — where you CREATE a goal (port 5173)
+# 4) chat UI — where a goal's CREATION is WATCHED (understanding card, working column)
 cd goal-flow-agent-chat-ui && npm run dev
+# 5) Bixby surrogate — where you SAY the goal (v4.1: the chat surface has no composer)
+cd goal-flow-agent-bixby-ui && npm run dev
 ```
+
+> **Ports are assigned in START ORDER from 5173** — Vite takes the next free one, so read
+> each terminal's printed URL rather than trusting the numbers here.
 
 Open **both**: the **chat UI at http://localhost:5173** (you start goals here) and the
 **Agent Board at http://localhost:5174** (goals live here). On the real Hub the shell swaps
@@ -123,7 +134,8 @@ running low."**
 ## Act 1 — Create a goal on the chat surface (understanding → plan → approve)
 
 1. **Start a goal.** On the real Hub you press the agent icon and *speak* it; in the demo,
-   accept the board's **"Expiring Soon"** suggestion (tap **+**) or type on the **chat UI**:
+   accept the board's **"Expiring Soon"** suggestion (tap **+**) or type it into the
+   **Bixby surrogate** (v4.1 moved goal entry there — the chat surface has no composer):
    *"Plan meals that use up the food expiring this week."*
    - *Say:* "I talk to the agent to start a goal. On the Hub that's my voice; here it's the
      chat surface. It even offered this one itself — I'm just saying yes."
@@ -146,6 +158,88 @@ running low."**
    now driving this goal."** That's the cue to switch to the board.
    - *Say:* "Creation is done. Everything from here — watching it, changing it as the week
      unfolds — happens on the board. The chat's job was to start it and get my sign-off."
+
+---
+
+## Act 1b — v6: the constraints fit the goal (and the agent remembers)
+
+*New in v6. Everything below runs on the same stack — nothing extra to start.* The
+one-line pitch: **through v5 every goal got the same meal-shaped household.** A vacation
+goal was dispatched the **$120 weekly grocery cap** as its trip ceiling, plus "prefer more
+vegetables" and "dislikes mushrooms". v3.5 made the planner generic per domain; the
+constraints it planned against never followed. See
+[V6_CONSTRAINTS.md](V6_CONSTRAINTS.md).
+
+### 1b-i · The same household, a different set of constraints per goal
+
+Start these one at a time and read the **Understanding card's chips** (the chat surface):
+
+| Say | Chips you should see |
+|---|---|
+| *"Plan our dinners for this week"* | budget **$120**, quiet hours 21:30–07:00, peanut allergen, no-pork, low-sodium, envelope **$600 monthly** |
+| *"Get the house ready, we're away all next week"* | budget **$1500** (travel — not $120), **away** *(two ISO dates)*, and the same allergens/dietary/medical |
+| *"Prepare my son's birthday party next Sunday"* | budget **$200** (party) |
+| *"Cut our electricity bill this month"* | **peak tariff 17:00–21:00**, and NO away window |
+
+> *Say:* "Same family, same store of rules — but a trip is constrained like a trip. The
+> allergens ride on every goal; only the caps and windows change. That is deliberate: a
+> wrong cap costs a noisy plan, a dropped allergen costs something else entirely."
+
+The cloud terminal shows the resolution: `graph_node_exit node=load_memory domain=vacation_prep applied=12 picked=relevance`.
+
+### 1b-ii · It is enforced, not just displayed
+
+The honest proof is deterministic and offline — the LLM will not reliably propose a
+violating action on cue, so **do not stake the demo on catching one live**:
+
+```bash
+cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh
+```
+
+Gate 6 (28 cases) includes the new rows: a dishwasher run scheduled **inside the away
+window** is blocked *"nobody is home"*; an 18:00 run is blocked on an energy goal (peak
+tariff) and **allowed** on a guest dinner, because that goal carries no peak window.
+
+### 1b-iii · Two goals, one wallet (the household envelope)
+
+1. Create the **party** goal and approve its grocery order (that is what spends money).
+2. Create a **grocery** goal — *"keep the kitchen stocked for less this week"* — or
+   **Advance a day** with one already running.
+3. The second goal's ceiling is now `min(its cap, $600 − spent)`, and it raises a material
+   change: *"Another goal has spent from the household budget…"* → it re-plans.
+
+> *Say:* "Per-goal caps cannot see each other — a $200 party and a $120 grocery week each
+> fit their own ceiling and together blow the month. They draw on one envelope now."
+
+Deterministic version: gate 20 in the chain above.
+
+### 1b-iv · Say it once, and it is remembered (capture)
+
+On the **input surface** (`goal-flow-agent-bixby-ui` — the chat surface has no composer
+since v4.1), say a *statement* rather than a goal:
+
+1. **"We've gone vegan."** The chat surface shows a card headed **REMEMBERING /
+   Something to remember** — one rule, *no meat, no dairy, no eggs, no honey*, your own
+   words quoted back, an **ENFORCED** badge, ticked but clearable. Press **Remember this**
+   → *"Noted — I'll remember that: vegan diet."* **No board card** — nothing is going to run.
+2. **Now start a meal goal.** The dietary chip carries the new rule, and the provenance row
+   says it came from **chat**.
+3. **The refusals are the point** — try them:
+   - *"Actually we can eat pork again"* → no proposal. A chat message may tighten a rule,
+     never relax one.
+   - *"Raise the party budget to $900"* → refused for the same reason.
+   - *"Prepare my son's party next Sunday, and keep it under $150"* → proposed as a
+     **goal-scoped** cap: the dispatch carries **$150** (not the standing $200), and it
+     expires at the goal's horizon so it cannot cap every birthday after this one.
+
+> *Say:* "It heard a household rule and asked before believing it. The model proposes; the
+> person disposes. Nothing is written by silence."
+
+**⚠ After demoing capture, restore the store** — capture writes to the real seed:
+
+```bash
+cd goal-flow-cloud-agent && git checkout -- data/memory/family_profile.json
+```
 
 ---
 
@@ -268,10 +362,11 @@ components) and `V3_DESIGN_PROPOSAL.md`.
 Each repo's gates run offline (no API key needed) and chain — run the latest:
 
 ```bash
-# device (Ubuntu): the full chain M0–M8, gates 1–18
-cd goal-flow-device-agent-ubuntu && ./verify/m8/check.sh
-# cloud: the board fold, the contract mirrors (gate 14), the generic gate, persistence
-cd goal-flow-cloud-agent && for g in verify_board verify_mirrors verify_generic_gate verify_persistence; do .venv/bin/python scripts/$g.py; done
+# device (Ubuntu): the full chain M0–M8 + v6-M2/M3, gates 1–20
+cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh
+# cloud: board fold, contract mirrors, per-goal constraint resolution (15), chat capture
+# (16), persistence — plus the generic gate, which needs a key and is the slow one
+cd goal-flow-cloud-agent && for g in verify_board verify_mirrors verify_constraints verify_capture verify_persistence verify_generic_gate; do .venv/bin/python scripts/$g.py; done
 # a real end-to-end plan (needs a key):
 cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj -- --contract data/sample-contract.json
 ```
@@ -293,7 +388,11 @@ cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj 
 | Board shows nothing / a card is stuck | Reload the board (it re-fetches a fresh `board_snapshot`); a detail page that opened empty re-fills via `goal_state_get`. A card that won't move usually means the device is offline — it goes **At Risk / "went offline"**. |
 | **Advance day** does nothing / no "what happened" card | Nothing has changed for that sim day (a quiet day shows "nothing changed"), or no goals are running yet — create + approve a goal first. Check the cloud terminal shows the `day_advanced` frame going out. |
 | `[Errno 98] address already in use` (cloud) | A previous cloud holds :8000 → stop it (`ps -eo pid,args | grep uvicorn`, then `kill`). |
-| A UI came up on the wrong port (5175/5176) | A stale Vite holds the default port. Stop the old dev servers and restart. |
+| A UI came up on the wrong port (5175/5176) | A stale Vite holds the default port. Stop the old dev servers and restart. Ports are assigned in START ORDER from 5173 — read each terminal's printed URL rather than assuming. |
+| **v6:** the capture card never appears | Detection is an LLM call. Say a bare statement with no request in it ("we've gone vegan"), not "plan vegan dinners" — the second one is a goal, and it is treated as one. The cloud log shows `node=detect_constraints proposed=N statement_only=…`. |
+| **v6:** `data/memory/family_profile.json` changed after a demo | Expected — an accepted capture writes there. Restore with `git checkout -- data/memory/family_profile.json`. (The write also reflows the file's formatting, so the diff looks bigger than the one entry added.) |
+| **v6:** the device goes offline after a cloud restart | Restart the device agent too. Its reconnect backoff can outlast your patience; the board shows the goal **At Risk** in the meantime. |
+| **v6:** a vacation goal still shows a $120 cap | You are running an old cloud. The resolution lives in `memory/store.py`; confirm with `.venv/bin/python scripts/verify_constraints.py` (gate 15). |
 | Demo data got dirty (approvals/advancing wrote to it) | Restart the stack for a clean world, or restore only the runtime-mutated files (`git checkout -- data/appliances.json data/shopping_list.json data/inventory.json data/security.json data/notifications.json`) — do **not** `git checkout -- data/` wholesale (`daily_events.json`, thresholds, and the domain seeds are structure, not residue). (v3.2 dropped the per-goal Reset; a global reset is deferred.) |
 
-Clean shutdown: stop the four dev/service processes (uvicorn, GoalFlow.Device, the two Vite servers).
+Clean shutdown: stop the service processes (uvicorn, GoalFlow.Device, the three Vite servers). Check with `ps -eo pid,args | grep -E 'uvicorn|GoalFlow.Device|bin/vite'`.
