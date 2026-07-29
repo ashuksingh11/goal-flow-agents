@@ -24,7 +24,7 @@ Samsung Tizen Family Hub).
   working column (receipts / one focus card holding the transcript / ghosts, then the plan
   landing into reserved slots). Height conservation, honest per-engine durations, the paced plan
   reveal + the `plan_progress.total` contract addition, and the transcript JSON fix.
-- **[V6_CONSTRAINTS.md](V6_CONSTRAINTS.md)** 🚧 — **design, not yet built**: constraints become a
+- **[V6_CONSTRAINTS.md](V6_CONSTRAINTS.md)** ⭐ — **current, M1–M4 shipped**: constraints become a
   sourced, scoped, expiring model that resolves *per goal* — so a vacation goal is constrained like
   a vacation (travel cap + away window), not like a meal week ($120 grocery cap). Kills the
   cloud/device duplication of household truth, adds the two constraints that make vacation and

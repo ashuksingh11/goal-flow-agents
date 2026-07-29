@@ -270,11 +270,32 @@ What M3 turned up:
   block. A resolver that throws arms the **dispatched** policy — a bad world read loses the
   tightening, never the gate.
 
-**M4 — Chat capture beat**
-Capture → confirm → persist with `source: chat`; goal-less capture path; chat UI renders
-provenance on the understanding card.
-*Gate:* a constraint captured in chat enforces on the **next** goal, and the block cites
-where it came from.
+**M4 — Chat capture beat — ✅ SHIPPED**
+`detect_constraints` proposes; `append_constraints` (tighten-only, append-only) is the
+single write path; a pure statement routes to `capture_gate` — the existing understanding
+wire with `capture_only: true`, no board card, ending in a `notice` of kind `captured`.
+The chat UI's card gains per-rule ticks with the user's words quoted back.
+*Gate:* `scripts/verify_capture.py` (gate 16) — silence captures nothing, a capture may
+only tighten, and a captured rule reaches `constraints.hard` on the next goal with its
+provenance intact. Verified live end to end through the real stack.
+
+What M4 turned up — mostly things only a live run shows:
+
+- **The same rule proposed twice**, once hard and once soft. Two identical rows at a
+  confirmation gate is a question nobody can answer; deduped, hard wins.
+- **A rule that would enforce nothing.** One run returned the dietary value `"vegan"` — a
+  word no recipe check matches, since the device's vocabulary matches *things*. A diet's
+  name is now expanded to what it forbids. "Captured but unenforceable" is the one outcome
+  capture must never have, and it looks identical to success from the UI.
+- **A regression I introduced and nearly shipped.** Teaching the *interpreter* that "a bare
+  statement is not a goal" cost it a goal it had always got right — "get the house ready,
+  we're away all next week" started coming back un-actionable, because my rule's example and
+  the counter-example are the same sentence. The judgement moved to `detect_constraints`
+  (`statement_only`), which is already reading the message for rules; the interpreter prompt
+  is untouched. Gate 10 caught it — but only because it was re-run after the fact, which is
+  the argument for running the whole suite rather than the part you think you touched.
+- **Known cosmetic effect:** `append_constraints` rewrites the store with `json.dump`,
+  reflowing the hand-authored inline arrays. Nothing is lost; the diff just looks large.
 
 ## Where (files)
 
