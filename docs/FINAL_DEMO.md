@@ -1,4 +1,4 @@
-# GoalFlow — Final Demo Run-Sheet (v3.6, + v6 constraints)
+# GoalFlow — Final Demo Run-Sheet
 
 The end-to-end demo script for the **general goal-based agent** on a Samsung Family Hub.
 v3.1 splits the surfaces by moment: the **chat UI is where you CREATE a goal** (speak it,
@@ -28,8 +28,8 @@ takes over.
 
 ## 0. One-time setup
 
-**Five surfaces**, three of them services (`~/ashu/git/`). Put your OpenRouter key in the
-two `.env` files and use a **paid** model (free `:free` models are rate-limited):
+**Five processes** — two services and three web UIs (`~/ashu/git/`). Put your OpenRouter key
+in the two `.env` files and use a **paid** model (free `:free` models are rate-limited):
 
 ```bash
 # goal-flow-cloud-agent/.env  and  goal-flow-device-agent-ubuntu/.env:
@@ -42,7 +42,7 @@ First-time-only install (once per repo): `.venv` + `pip install -e .` for the cl
 
 ### Run — all on one machine (the standard demo)
 
-Four terminals. **These are the canonical commands.**
+Five terminals. **These are the canonical commands.**
 
 ```bash
 # 1) cloud hub — binds 0.0.0.0:8000 and loads .env
@@ -53,30 +53,31 @@ cd goal-flow-cloud-agent && source .venv/bin/activate && ./run.sh
 #    the dir self-seeds from ./data on first use. (data-*/ is gitignored.)
 cd goal-flow-device-agent-ubuntu && rm -rf data-run1 && \
   dotnet run --project GoalFlow.Device.csproj -- --connect --data ./data-run1
-# 3) Agent Board — where a goal LIVES (port 5174)
+# 3) Agent Board — where a goal LIVES
 cd goal-flow-agent-board-ui && npm run dev
-> **v5.1 — what the chat surface looks like now.** One **working column**: engines that have
-> finished collapse into receipts carrying their verdict and their real duration
-> (`Grounding · grounded · 59.3s`), the engine that is running holds a single focus card with
-> the live reasoning transcript and its tool calls inside it, and the ones still to come sit
-> below as ghosts. The plan lands underneath, one row at a time, into slots reserved before the
-> content arrives. Every card sizes to its own content — nothing is squeezed, and only the
-> content area scrolls while the goal itself stays pinned at the top. The phase rail is gone (it
-> was a second progress indicator for the same run). See [DESIGN.md](DESIGN.md) §7.
-
 # 4) chat UI — where a goal's CREATION is WATCHED (understanding card, working column)
 cd goal-flow-agent-chat-ui && npm run dev
 # 5) Bixby surrogate — where you SAY the goal (v4.1: the chat surface has no composer)
 cd goal-flow-agent-bixby-ui && npm run dev
 ```
 
+> **What the chat surface looks like now.** One **working column**: engines that have finished
+> collapse into receipts carrying their verdict and their real duration
+> (`Grounding · grounded · 59.3s`), the engine that is running holds a single focus card with the
+> live reasoning transcript and its tool calls inside it, and the ones still to come sit below as
+> ghosts. The plan lands underneath, one row at a time, into slots reserved before the content
+> arrives. Every card sizes to its own content — nothing is squeezed, and only the content area
+> scrolls while the goal itself stays pinned at the top. The phase rail is gone (it was a second
+> progress indicator for the same run). See [DESIGN.md](DESIGN.md) §7.
+
 > **Ports are assigned in START ORDER from 5173** — Vite takes the next free one, so read
 > each terminal's printed URL rather than trusting the numbers here.
 
-Open **both**: the **chat UI at http://localhost:5173** (you start goals here) and the
-**Agent Board at http://localhost:5174** (goals live here). On the real Hub the shell swaps
-between them — chat full-screen while you create, then the board full-screen for the rest.
-In the browser demo you keep both tabs and switch by hand at the hand-off. Both headers show
+Open **three tabs**, at whatever URLs the three Vite terminals printed: the **Bixby
+surrogate** (you type every prompt here), the **chat UI** (you watch a goal being created and
+approve its plan) and the **Agent Board** (goals live here). On the real Hub the shell swaps
+between them — chat full-screen while you create, then the board full-screen for the rest; in
+the browser demo you switch tabs by hand at the hand-off. The chat and board headers show
 **● open** when connected.
 
 Dates are **relative to the real today** — the sim clock and plan dates just work.
@@ -90,7 +91,7 @@ them):
 - **Board/chat (Ubuntu):** `npm run dev` — leave `VITE_WS_URL` unset. On the tablet browse
   to `http://<ubuntu-ip>:5174` (board) / `:5173` (chat); each connects to
   `ws://<ubuntu-ip>:8000/ws` automatically.
-- **Device (Tizen Hub):** the agent is in sync with ubuntu (re-synced v3.6.2). Set
+- **Device (Tizen Hub):** the agent is in sync with ubuntu (re-synced through v6). Set
   `WS_URL=ws://<ubuntu-ip>:8000/ws` in `goalflow.conf`, deploy the `.tpk`, watch
   `dlogutil GOALFLOW`. (An Ubuntu device instead: `--connect ws://<ubuntu-ip>:8000/ws`.)
   - **No `--data` flag on Tizen** — a Tizen service takes no CLI args. It does the
@@ -131,11 +132,11 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
 
 | # | Say this into Bixby | What to expect | What you do |
 |---|---|---|---|
-| 0 | *(nothing — open the board)* | **Upcoming & Suggested**: "Expiring Soon · spinach, yogurt", "Grocery Restock" | Just show it: it acted before being asked |
-| 1 | **Plan our dinners this week, healthy and using up what's in the fridge.** | Understanding card, chips: budget **$120** · quiet hours 21:30–07:00 · peanut allergen · no-pork · low-sodium · envelope **$600 monthly** | **Confirm & plan** → watch the harness pipeline (~30–60s) → **approve both** proposals |
+| 0 | *(nothing — open the board)* | **Upcoming & Suggested**: "Expiring Soon · 4 items within 3 days · spinach, yogurt, bread, chicken breast" and "Grocery Restock · 5 items running low" | Just show it: it acted before being asked |
+| 1 | **Plan our dinners this week, healthy and using up what's in the fridge.** | Understanding card, chips: budget **$120** · quiet hours 21:30–07:00 · peanut allergen · no-pork · low-sodium · envelope **$600 monthly** | **Confirm & plan** → watch the working column (~30–60s) → **Approve & Save** |
 | 2 | **Get the house ready, we're away all next week.** | Chips: budget **$1500** (travel, *not* $120) · **away** *(two real dates)* · same allergens | Confirm & plan → approve |
 | 3 | **Cut our electricity bill this month.** | Chips: **peak tariff 17:00–21:00** · **no** away window | Confirm & plan → approve |
-| 4 | **Prepare my son's birthday party next Sunday.** | Chips: budget **$200** (party) | Confirm & plan → **approve the order** (this is the spend that sets up step 10) |
+| 4 | **Prepare my son's birthday party next Sunday.** | Chips: budget **$200** (party) | Confirm & plan → leave the **order** toggled ON and **Approve & Save** (this is the spend that sets up step 10) |
 | 5 | **We've gone vegan.** | Header reads **REMEMBERING** · card "Something to remember" · one rule *no meat, no dairy, no eggs, no honey* · your words quoted · **ENFORCED** badge · **no board card** | **Remember this** → *"Noted — I'll remember that…"* |
 | 6 | **Plan our dinners for next week.** | The dietary chip now carries the vegan rule; its provenance row says it came from **chat** | Confirm & plan (or decline — the point is the chip) |
 | 7 | **Actually we can eat pork again.** | **Nothing is captured.** A chat message may tighten a rule, never relax one | Nothing — that IS the beat |
@@ -169,8 +170,10 @@ cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh   # gates 1–21
 
 Open the Agent Board. Even with **no goals yet**, it's already working: an **Upcoming &
 Suggested** section shows cards the agent raised on its own by scanning the fridge —
-**"Expiring Soon · 2 items in 3 days · spinach, yogurt"** and **"Grocery Restock · 4 items
-running low."**
+**"Expiring Soon · 4 items within 3 days"** (spinach, yogurt, bread, chicken breast) and
+**"Grocery Restock · 5 items running low"** (rice, toor dal, tortilla wraps, onions, milk).
+Both counts come from the seed and the 3-day horizon in `InventorySuggester`, so they move if
+you edit `data/inventory.json`.
 
 > *Say:* "This is the home screen. Before I've asked for anything, it has already looked
 > at the fridge and is offering to act. Everything on this board is one glance — what's
@@ -199,8 +202,14 @@ running low."**
    Meanwhile the **board card** (other tab) fills in live — progress, next step, pending.
    - *Say:* "The fridge agent calls its own tools; the model plans; nothing's hardcoded. And
      the plan was checked by **code** — allergens, the low-sodium need, the budget cap."
-4. **Approve (tiered).** Light **"QUICK OK — add missing groceries"** and a firm
-   **"NEEDS YOUR APPROVAL — place grocery order"** (budget-capped, under $120). Approve them.
+4. **Approve (tiered).** The approvals block is headed **"What happens when you save"** with a
+   count — *"2 automatic · 2 your choice"*. Auto-tier effects are already **receipts** (✓, "done
+   automatically"); a light effect is a **toggle** you can leave off; a firm one (spending money,
+   e.g. placing the grocery order) renders heavier. Flip what you want and press
+   **Approve & Save** once — the footer tells you exactly what it will save, and afterwards it
+   reads *"Saved — your Family Hub is on it."*
+   - *Say:* "Nothing above 'automatic' happens until I press this. The ones that spend money say
+     so, and I can leave any of them out.
 5. **The hand-off.** The chat shows a green banner: **"Plan approved — your Agent Board is
    now driving this goal."** That's the cue to switch to the board.
    - *Say:* "Creation is done. Everything from here — watching it, changing it as the week
@@ -231,7 +240,10 @@ Start these one at a time and read the **Understanding card's chips** (the chat 
 > allergens ride on every goal; only the caps and windows change. That is deliberate: a
 > wrong cap costs a noisy plan, a dropped allergen costs something else entirely."
 
-The cloud terminal shows the resolution: `graph_node_exit node=load_memory domain=vacation_prep applied=12 picked=relevance`.
+The cloud terminal shows the resolution:
+`graph_node_exit node=load_memory family_id=family-hub-demo domain=vacation_prep applied=13 picked=relevance`.
+(`applied` counts hard + soft rows and shifts with what the relevance pass picks; `picked=tags`
+means the LLM pass returned nothing and the tag fallback ran.)
 
 ### 1b-ii · It is enforced, not just displayed
 
@@ -315,7 +327,8 @@ device's sim clock is device-wide, so one tick moves the world for *every* goal 
    "Knew" constraints, Safety ✓, impact, and a **What has happened** history. Tap **‹ Board**
    to go back. (No jumping to the chat — the board owns this.)
 2. **Advance a day.** On the main board, press **Advance day**. The sim clock steps forward
-   once (*Sunday → Monday*), and a **"What happened today"** card appears below it listing the
+   once (whatever today is — the clock is anchored to the real date), and a
+   **"What happened today"** card appears below it listing the
    day's world events — *"Fresh groceries arrived — affects Weekly Meal Plan"* — and which
    goals each touched. **Every goal card updates**: its **progress % advances by the day**,
    and a goal the change affected flags **"⚠ Approval needed."**
@@ -345,10 +358,13 @@ device's sim clock is device-wide, so one tick moves the world for *every* goal 
    - *"Get the house ready, we're away all next week."* — the goal **v2 refused** as
      out-of-scope. It runs now because the device advertises Security/Appliance/Reminders
      and the cloud judges against *that*: lock doors, arm security (pre-checked against the
-     cameras), thermostat to eco, run the dishwasher before quiet hours, and use up the food
-     that would spoil while away. *(smart-home orchestration + the precheck gate.)*
+     cameras), run the dishwasher and washer before quiet hours, hold deliveries, and use up
+     the food that would spoil while away. The appliances in this world are oven, dishwasher,
+     washer, fridge and TV — **there is no thermostat**, so don't promise one.
+     *(smart-home orchestration + the precheck gate.)*
    - *"Plan my son Aarav's birthday party next Sunday for 20 kids."* — routes to the
-     birthday domain; costs the cake + supplies against the $120 cap. *(dynamic replanning
+     birthday domain; costs the cake + supplies against the **$200 party cap** (v6 — the
+     account carries a per-domain cap; it is not the $120 grocery week). *(dynamic replanning
      + budget + cross-app.)*
    - *"Keep our kitchen stocked while spending less on groceries."* — `grocery_cost`:
      restock to threshold, priced against the budget book; a `PlaceOrder` over the cap is
@@ -425,7 +441,7 @@ components, §6 for the frames.
 Each repo's gates run offline (no API key needed) and chain — run the latest:
 
 ```bash
-# device (Ubuntu): the full chain M0–M8 + v6-M2/M3, gates 1–20
+# device (Ubuntu): the full chain M0–M8 + v6-M2/M3, gates 1–21
 cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh
 # cloud: board fold, contract mirrors, per-goal constraint resolution (15), chat capture
 # (16), persistence — plus the generic gate, which needs a key and is the slow one
