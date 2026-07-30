@@ -60,9 +60,9 @@ cd goal-flow-agent-board-ui && npm run dev
 > (`Grounding · grounded · 59.3s`), the engine that is running holds a single focus card with
 > the live reasoning transcript and its tool calls inside it, and the ones still to come sit
 > below as ghosts. The plan lands underneath, one row at a time, into slots reserved before the
-> content arrives. Nothing scrolls the page — say that out loud on stage, it is the point. The
-> phase rail is gone (it was a second progress indicator for the same run). See
-> [DESIGN.md](DESIGN.md) §7.
+> content arrives. Every card sizes to its own content — nothing is squeezed, and only the
+> content area scrolls while the goal itself stays pinned at the top. The phase rail is gone (it
+> was a second progress indicator for the same run). See [DESIGN.md](DESIGN.md) §7.
 
 # 4) chat UI — where a goal's CREATION is WATCHED (understanding card, working column)
 cd goal-flow-agent-chat-ui && npm run dev

@@ -135,8 +135,9 @@ Three things worth knowing:
   those functions*. There is no hardcoded set of supported domains, and an interpreter that
   coins a new domain slug still gets the full enforced constraint set.
 - **Actionable ≠ permissible.** The cloud answers *"is this in the product's world?"*; the
-  device's Safety Policy Engine answers *"may it happen?"* — and produces a far better
-  refusal. "Unlock the back door for the plant sitter" is actionable and forbidden.
+  device's Safety Policy Engine answers *"may it happen?"* — and produces a far better refusal.
+  Running the dishwasher on Wednesday is plainly actionable; scheduled inside the away window it
+  comes back blocked, *"nobody is home"* (gate 21).
 - **`BoardService` (`board.py`) derives board truth from frames the hub already routes.**
   Progress, next step, ETA, alerts and state are folded from device `task_update`/`status`
   frames into whole-object `GoalSummary` deltas (replace-by-id, idempotent), sequenced by
@@ -176,7 +177,14 @@ loosening override fails loudly at load, so a typo cannot silently weaken the ga
 | A0 | executes, logged | all reads, `Reminders.Create` |
 | A1 | rides the batched plan approval | `ShoppingList.Add` |
 | A2 | never executes before explicit approval | `ShoppingList.PlaceOrder` |
-| AX | **prohibited** — never a proposal target, blocked unconditionally, no approval path | `Security.UnlockDoor` |
+| AX | **prohibited** — never a proposal target, blocked unconditionally, no approval path | *(no function carries it — see below)* |
+
+**AX is a mechanism without a subject.** Nothing the Family Hub does today is prohibited: the
+plugins grade A0–A2, `grades.overrides` in `policy.json` is empty, and the smart lock that was
+meant to be the first AX function was never built. It is enforced twice (never offered as a
+proposal target; blocked before any constraint logic) and gate 7 exercises it through a
+throwaway policy that tightens `ShoppingList.PlaceOrder` to AX — so the mechanism is verified,
+but there is **no AX beat to demo**.
 
 **Safety rules are instances, not code.** The engine defines five rule *kinds* —
 `blocked_terms`, `numeric_cap`, `time_window_block`, `date_window_block`, `result_screen` — and
@@ -187,8 +195,10 @@ policy **resolver** before the policy is armed, never inside a rule.
 **Multi-goal is real, and it was three concrete bugs.** Policy is keyed per goal with the
 current goal flowed to the filter via `AsyncLocal` (a singleton `SetPolicy` once let goal B
 overwrite goal A's allergens mid-plan — the worst possible failure for "code checks"); `Trace`
-hands out per-goal scopes owning their own sequence; goal state is `ConcurrentDictionary` plus
-a per-goal semaphore. Monitoring, adaptation and approval run cross-goal in parallel; **device
+hands out per-goal scopes owning their own sequence; per-goal state is a
+`ConcurrentDictionary` in each owner (`ArmedPolicies._policies`, `TaskManager._goals`,
+`GoalAgent._pendingPatches`) — the v3 plan also called for a per-goal semaphore and it turned
+out not to be needed. Monitoring, adaptation and approval run cross-goal in parallel; **device
 planning is capped at one at a time**, so a queued goal shows as *Waiting* on the board instead
 of stalling invisibly.
 
@@ -226,16 +236,21 @@ Seven rules, each closing off a tempting-but-wrong implementation:
   the fallback. Soft can be wrong for free; hard cannot — which is the whole reason only soft
   goes near the model.
 
-So a vacation goal is constrained like a vacation, which is the point of the exercise:
+So a vacation goal is constrained like a vacation, which is the point of the exercise.
+**Every row also carries allergens, dietary, medical, quiet hours and the envelope** — those
+never vary by domain (R7), so the table lists only what *differs*:
 
-| Domain | Hard (enforced) | Soft (bias) |
+| Domain | Hard, on top of the always-enforced set | Soft (bias) |
 |---|---|---|
-| `meal_plan` | allergens · dietary · medical · grocery cap $120 · quiet hours | dislikes, weekday-vegetarian, prefer vegetables |
-| `guest_dinner` | + quiet hours (the dishwasher) | hosting style, guest diets |
-| `vacation_prep` | + **travel cap $1500** · **away window** | hold deliveries, eco while away, use up perishables |
-| `birthday_party` | + **party cap $200** | hosting style, kid-friendly |
-| `grocery_cost` | + grocery cap | substitutions, bulk staples |
-| `energy_saving` | **peak tariff window** · quiet hours | eco programs, off-peak shifting |
+| `meal_plan` | grocery cap **$120** | dislikes, weekday-vegetarian, prefer vegetables |
+| `guest_dinner` | grocery cap (quiet hours bite here — the dishwasher) | hosting style, guest diets |
+| `vacation_prep` | **travel cap $1500** · **away window** (ISO dates) | hold deliveries, eco while away, use up perishables |
+| `birthday_party` | **party cap $200** | hosting style, kid-friendly |
+| `grocery_cost` | grocery cap | substitutions, bulk staples |
+| `energy_saving` | **peak tariff window 17:00–21:00** | eco programs, off-peak shifting |
+
+A domain with no cap of its own inherits the household default, and a slug the interpreter
+coined that nobody tagged gets the full enforced set plus that default — verified by gate 15.
 
 **The household envelope** is what makes goals share a wallet. The cap is policy; the spend is
 world state, so `budget.json` keeps `spent` and no longer restates the cap (R3):
@@ -268,7 +283,8 @@ use, so a demo run never dirties the seed.
 **`goal-flow-cloud-agent/CONTRACT.md` is canonical.** Everything else mirrors it, and a frame
 change touches every mirror in one pass:
 
-`CONTRACT.md` · `models/contract.py` · both UIs' `src/types/contract.ts` · `Contracts/*.cs` ·
+`CONTRACT.md` · `models/contract.py` · **three** UIs' `src/types/contract.ts` (chat, board,
+bixby) · `Contracts/*.cs` ·
 and **`ws.ts INBOUND_TYPES`**, a client allowlist that *silently drops* unlisted frames. Gated
 by `scripts/verify_mirrors.py`.
 
@@ -287,8 +303,10 @@ everything, so older clients are unaffected.
 
 **The create-phase bracket.** `chat_ui_open { goal_id }` is emitted before `understanding` and
 opens (or retargets) the webview; the chat UI treats it as a hard reset keyed to that
-`goal_id`. `chat_ui_close` fires on the **initial approval** — the user's final tap — and also
-on a declined gate or a terminal error. A per-session replay cache (`understanding`,
+`goal_id`. `chat_ui_close` fires on the **initial approval** — the user's final tap — and also on
+a declined gate, a completed capture (there is no plan coming), and any terminal error after the
+open, so the webview can never dangle. Every close is guarded on "still the session's
+create-phase goal", which is what stops a board adaptation approval from retriggering one. A per-session replay cache (`understanding`,
 `present_plan`) is replayed to a freshly-bound `"chat"` socket, which is what fixes the race
 between the webview connecting and the understanding being computed.
 
@@ -306,9 +324,14 @@ reserved slots, with tiered approvals under it.
 
 Three rules keep that honest, and each of them was learned the hard way:
 
-- **Boxes fit their content, and the page never scrolls.** Caps do that (`34vh` transcript,
-  62% run column), not one element swallowing the slack — a focus card that absorbed every
-  spare pixel put a single line of text in a box half the screen tall.
+- **Cards size to their content; the column scrolls.** This took three tries. v5.1 conserved
+  total height by letting the focus card absorb every spare pixel — mathematically neat, and it
+  put a one-line note in a box half the screen tall. Fitting the content fixed that but kept the
+  never-scroll promise, which the plan card cannot make: seven steps plus approvals exceed any
+  viewport, and a clipped "Approve" is far worse than a scrollbar. So v5.2 lets the **content**
+  scroll while the goal bar stays put — and pins `.column__main > * { flex: 0 0 auto; }`, because
+  flex items shrink by default and a squeezed box whose content kept painting drew the cleared
+  pipeline straight through the plan card. The transcript has its own `max-height: 220px`.
 - **The transcript belongs to one engine** — attributed to the engine live *on the wire*, never
   the painted one, which lags behind by the render floor. Without this, Planner and Safety
   repeated grounding's narration as if they had said it. Which matters more than it sounds: over
@@ -321,13 +344,19 @@ Three rules keep that honest, and each of them was learned the hard way:
   floor is a paint-timing knob only; order, verdicts and reported latency are exactly what the
   device sent.
 
-**Board UI (home)** — glanceable, read-mostly, one card per goal with outcome plus ✓ done /
-⏳ waiting / ➡ next. It sends only `hello`, `select_device`, `board_get`, `goal_state_get`,
-`user_goal` and `suggestion_action` — **never `approval` or `control`**. Approvals live in the
-chat UI: a glanceable surface should tell you something needs you, not be where consequential
-decisions get made in one tap. A card drills through to the chat app with `?goal=<id>`.
-**Advance day** lives here too — one global world tick, a goal-less `control` that fans out
-over every active goal, landing on the day it advances to with real dates ("Tue, Jul 22").
+**Board UI (home)** — one card per goal, leading with the outcome plus ✓ done / ⏳ waiting /
+➡ next. **It is a first-class surface, not read-mostly** — v3 designed it as a projection that
+never wrote, and v3.1 reversed that: the goal's whole life after creation happens here.
+
+It sends `hello`, `select_device`, `board_get`, `goal_state_get`, `user_goal`,
+`suggestion_action`, **`approval`** (adaptations, on the goal-detail page) and **`control`**
+(**Advance day** — one global world tick, a goal-less frame that fans out over every active
+goal, landing on the day it advances to with real dates like "Tue, Jul 22"). It never sends
+`dispatch`: the hub-only invariant holds.
+
+The split with the chat UI is **temporal, not by capability** — chat owns *creating* a goal
+(understanding gate, first plan, first approval), the board owns everything after. A card
+drills into the chat app with `?goal=<id>` for the detail view.
 
 ---
 
@@ -341,12 +370,22 @@ ShoppingList, Budget, Appliance, Security, Notify, Reminder, Guests, FamilyProfi
 **No absolute dates anywhere** — the world is day offsets against a mock clock, so the demo
 works on any day without editing fixtures.
 
-The negative paths prove the harness better than the happy ones, and all four are demoable:
-an **AX refusal** inside an otherwise successful plan; a **precheck failure** (thermostat
-offline) that parks one subtask At Risk while the others proceed and resumes when the probe
-clears; a **safety block with recovery**, where a too-expensive cart is blocked and the model
-visibly re-plans a cheaper one; and the **envelope squeeze**, where another goal's spending
-moves this goal's ceiling.
+The negative paths prove the harness better than the happy ones. Three are real:
+
+- a **precheck failure** — flip `device_online:<appliance>` to false in `device_state.json`
+  (dishwasher, oven or fridge — **there is no thermostat in this world**, despite the example in
+  the engine's own comments) and that subtask parks At Risk while the others proceed, resuming
+  when the probe clears;
+- a **window block** — an appliance run scheduled inside the away window, or a heavy one inside
+  the peak-tariff window on an energy goal, comes back blocked with the reason. These are the
+  most reliable to show because they bite at **approval** time and need no cooperation from the
+  planner;
+- the **envelope squeeze** — another goal's spending moves this goal's ceiling and it re-plans.
+
+A **safety block with recovery** (a too-expensive cart blocked, the model visibly re-planning a
+cheaper one) is real but depends on the planner proposing the expensive cart in the first place,
+so it is not something to promise from a stage. The **AX refusal** the v3 plan wanted is not
+demoable at all — see §4.
 
 **Proactive suggestions** come from deterministic device reads (inventory low, expiring soon)
 sent as `suggestions` and folded into cards by rule — no unprompted LLM calls. Tapping **+**
@@ -395,7 +434,8 @@ Brief by design. The detail is in the code, the gates, and `git log`; the pre-me
 | **v4.1** | **Bixby becomes the entry point** (new dev surrogate repo; the chat UI loses its composer): surface-aware delivery, the `chat_ui_open`/`chat_ui_close` create-phase bracket, and a replay cache. |
 | **v4.2** | Advance-day edits the day you land on, with real dates; quieter device/cloud logs; thinking becomes a live "watch it think" transcript. |
 | **v5** | Made the harness **visible** — a `harness` agent_event kind and a live pipeline panel — plus a unified light-grey theme and presenter dwell. Then fixed the tail engines flashing past, since their real work precedes their beats. |
-| **v5.1** | The chat surface becomes **one working column**: receipts, a single focus card holding the transcript, ghosts. Height conservation, honest durations, paced plan reveal. |
+| **v5.1** | The chat surface becomes **one working column**: receipts, a single focus card holding the transcript, ghosts. Durations stamped on arrival, paced plan reveal, `plan_progress.total`. |
+| **v5.2** | The panel redesign (confirm / run / plan, from `goal-flow2.pen`): the constraint chip grid, a motion vocabulary in `panel.css`, and the column learns to **scroll** — v5.1's never-scroll guarantee could not survive a full plan plus its approvals. |
 | **v6** | **Constraints with provenance** (§5): sourced, scoped, expiring, resolved per goal; cloud/device de-duplication; the household envelope across goals; capture-from-chat behind a confirmation gate. M1–M4. |
 
 ---
