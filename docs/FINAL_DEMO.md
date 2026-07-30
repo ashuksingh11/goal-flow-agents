@@ -62,7 +62,7 @@ cd goal-flow-agent-board-ui && npm run dev
 > below as ghosts. The plan lands underneath, one row at a time, into slots reserved before the
 > content arrives. Nothing scrolls the page — say that out loud on stage, it is the point. The
 > phase rail is gone (it was a second progress indicator for the same run). See
-> [V5_1_WORKING_COLUMN.md](V5_1_WORKING_COLUMN.md).
+> [DESIGN.md](DESIGN.md) §7.
 
 # 4) chat UI — where a goal's CREATION is WATCHED (understanding card, working column)
 cd goal-flow-agent-chat-ui && npm run dev
@@ -214,8 +214,7 @@ running low."**
 one-line pitch: **through v5 every goal got the same meal-shaped household.** A vacation
 goal was dispatched the **$120 weekly grocery cap** as its trip ceiling, plus "prefer more
 vegetables" and "dislikes mushrooms". v3.5 made the planner generic per domain; the
-constraints it planned against never followed. See
-[V6_CONSTRAINTS.md](V6_CONSTRAINTS.md).
+constraints it planned against never followed. See [DESIGN.md](DESIGN.md) §5.
 
 ### 1b-i · The same household, a different set of constraints per goal
 
@@ -382,8 +381,8 @@ device's sim clock is device-wide, so one tick moves the world for *every* goal 
 Toggle **"Show agent flow"** in the chat UI to reveal the live **WS message feed**:
 `hello`, `user_goal`, streamed `agent_event`s (incl. `task_update`), `present_plan`,
 `approval`, `status`, `suggestions`, the board's `board_snapshot`/`board_update`, and the
-v3.2 world tick `day_advanced`. Pair with the device repo's `docs/HARNESSES.md` (the five
-components) and `V3_DESIGN_PROPOSAL.md`.
+world tick `day_advanced`. Pair with [DESIGN.md](DESIGN.md) — §4 for the five harness
+components, §6 for the frames.
 
 **One-liners for Q&A:**
 - *Why did the controls move to the board?* v3.1: the chat is the **creation** surface
