@@ -242,12 +242,28 @@ never vary by domain (R7), so the table lists only what *differs*:
 
 | Domain | Hard, on top of the always-enforced set | Soft (bias) |
 |---|---|---|
-| `meal_plan` | grocery cap **$120** | dislikes, weekday-vegetarian, prefer vegetables |
-| `guest_dinner` | grocery cap (quiet hours bite here — the dishwasher) | hosting style, guest diets |
-| `vacation_prep` | **travel cap $1500** · **away window** (ISO dates) | hold deliveries, eco while away, use up perishables |
-| `birthday_party` | **party cap $200** | hosting style, kid-friendly |
-| `grocery_cost` | grocery cap | substitutions, bulk staples |
-| `energy_saving` | **peak tariff window 17:00–21:00** | eco programs, off-peak shifting |
+| `meal_plan` | — | prefers white meat, workout-friendly |
+| `guest_dinner` | — | hosting style |
+| `vacation_prep` | **away window** (ISO dates) | SmartThings away routine, energy saving, finish perishables |
+| `birthday_party` | — | party style |
+| `grocery_cost` | — | shop thrifty |
+| `energy_saving` | **peak tariff window 17:00–21:00** | shift heavy runs off-peak |
+
+**v7 emptied the household of money and quiet hours.** There is no `budget_cap`, no
+`budget_envelope` and no `quiet_hours` entry any more — which retires the envelope story
+along with them. That is an emptying of the STORE, not a removal of the mechanism: those
+kinds are still first-class here, the device's `numeric_cap` and `time_window_block` rule
+instances still enforce them, and the device gates still exercise both against synthetic
+policy blocks. Nothing resolves, so nothing is dispatched, so nothing is shown. Seed an
+entry and the whole chain works again unchanged.
+
+**Display is not enforcement (v7).** An entry may carry `display_to` — the domains its
+chip is worth SHOWING on. It changes nothing about resolution: the list kinds still union
+with `applies_to` ignored, and `hard` is still what gets dispatched. It produces a second
+block, `hard_display`, for the cards. So a home-prep goal shows no food chips while still
+carrying — and still being blocked by — every allergen the household holds. **Hiding a
+chip never hides a rule**, which is why they are two blocks rather than one filtered one,
+and why gate 15 pairs every display assertion with the enforcement assertion beside it.
 
 A domain with no cap of its own inherits the household default, and a slug the interpreter
 coined that nobody tagged gets the full enforced set plus that default — verified by gate 15.
@@ -271,6 +287,35 @@ written — with `source: "chat"`, append-only, tighten-only. A diet's *name* is
 what it forbids, because the device's vocabulary matches things, not labels: "captured but
 unenforceable" is the one outcome capture must never have, and from the UI it looks identical
 to success.
+
+### 5b. One goal changing another (v7)
+
+The household envelope was the first cross-goal channel and it moved a *number*. The
+second moves a *plan*.
+
+Approving a home-away goal writes its window to the store as a **household-scoped,
+chat-sourced, self-expiring** entry — until approval it is a proposal binding only itself;
+approval makes it a fact about the household. The cloud then re-resolves every other
+active goal and, where the enforced set actually moved, sends
+`control: constraints_changed` carrying the account's new `constraints.hard`, a steer, and
+one sentence for the board. The device re-arms from what it was sent (`ReDispatchAsync` —
+distinct from `ReResolveAsync`, which recomputes what is *enforced* from an unchanged
+dispatched block; re-resolving from a replaced block would let the device's own narrowing
+compound, and replacing on a re-resolve would let the device author policy) and applies the
+patch **immediately**.
+
+**This is the only adaptation path that does not ask, and the reason is not convenience.**
+Every other change in the system is something the *world* did, so a person decides what to
+do about it. This is something the person already decided, arriving at a goal that had not
+heard yet. *"You said you're away Thursday — shall I stop planning dinners for Thursday?"*
+is a question whose honest handling is not to ask it. So the plan changes and the board
+**says so**: one informational line on the card, a dismissible notice on the detail page,
+and never an alert — an alert means "you still have to decide".
+
+The days themselves are **kept, not deleted**. `PlanItem.status: "skipped"` renders them
+greyed with their reason; a plan that merely got shorter says nothing about why, and reads
+as data loss rather than as a decision. Gate 17 pins the blast radius, the idempotence and
+the self-retirement; gate 25 pins that the account still owns the policy.
 
 **`GOALFLOW_PROFILE_PATH`** points the store at a scratch copy — the cloud's equivalent of the
 device's `--data`. A path that does not exist yet is seeded from the committed profile on first
@@ -332,6 +377,14 @@ Three rules keep that honest, and each of them was learned the hard way:
   scroll while the goal bar stays put — and pins `.column__main > * { flex: 0 0 auto; }`, because
   flex items shrink by default and a squeezed box whose content kept painting drew the cleared
   pipeline straight through the plan card. The transcript has its own `max-height: 220px`.
+- **The planner stopped being silent (v7).** `ComposeModelPlanAsync` is not streamed and
+  keeps its plan JSON off the thinking channel deliberately, so through v6 that engine
+  emitted *nothing* on a healthy run — the drawer was blank for the longest stretch of it,
+  and a silent engine is indistinguishable from a broken one. It cannot narrate what it is
+  thinking, but it can say what it is thinking AGAINST: `thinking` gained optional
+  `kind`/`step`/`detail`, and a **step is whole on arrival**, never a fragment, so a client
+  renders it rather than accumulating chunks and guessing where a thought ends. `text`
+  stays the only required field, so a pre-v7 surface renders exactly what it did before.
 - **The transcript belongs to one engine** — attributed to the engine live *on the wire*, never
   the painted one, which lags behind by the render floor. Without this, Planner and Safety
   repeated grounding's narration as if they had said it. Which matters more than it sounds: over
@@ -345,7 +398,14 @@ Three rules keep that honest, and each of them was learned the hard way:
   device sent.
 
 **Board UI (home)** — one card per goal, leading with the outcome plus ✓ done / ⏳ waiting /
-➡ next. **It is a first-class surface, not read-mostly** — v3 designed it as a projection that
+➡ next. **v7 took the tool calls out of it** — the capability chips, the
+`{module}.{function}` beside each action, and the raw `Plan.ApplyPatch` in the history,
+which was the string every adaptation logs, so the one line telling a person their week
+changed said it in the language of a method call. This is the board: where someone looks
+to find out what is happening to their week, not to watch an agent work. The chat keeps
+its chips, because watching it work is what that surface is *for*. The evidence moved
+rather than vanishing — the why on every plan row, and the considered/rejected line under
+the plan, say the same thing in the reader's language. **It is a first-class surface, not read-mostly** — v3 designed it as a projection that
 never wrote, and v3.1 reversed that: the goal's whole life after creation happens here.
 
 It sends `hello`, `select_device`, `board_get`, `goal_state_get`, `user_goal`,
@@ -437,6 +497,7 @@ Brief by design. The detail is in the code, the gates, and `git log`; the pre-me
 | **v5.1** | The chat surface becomes **one working column**: receipts, a single focus card holding the transcript, ghosts. Durations stamped on arrival, paced plan reveal, `plan_progress.total`. |
 | **v5.2** | The panel redesign (confirm / run / plan, from `goal-flow2.pen`): the constraint chip grid, a motion vocabulary in `panel.css`, and the column learns to **scroll** — v5.1's never-scroll guarantee could not survive a full plan plus its approvals. |
 | **v6** | **Constraints with provenance** (§5): sourced, scoped, expiring, resolved per goal; cloud/device de-duplication; the household envelope across goals; capture-from-chat behind a confirmation gate. M1–M4. |
+| **v7** | The demo cut to **two goals and a refusal**, and the mechanisms that story needed. The household lost money and quiet hours entirely (§5). Display split from enforcement, so a goal can show no chips while still being blocked by every rule it carries. Preferences and provenance reached the screen for the first time. The planner stopped being silent (§7). **One goal now changes another** without asking (§5b) — the demo's headline. Activity data, deliveries and a robot vacuum joined the world; the board stopped speaking in function names; a refusal got a surface. M0–M7. |
 
 ---
 

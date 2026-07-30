@@ -52,7 +52,7 @@ Ports are assigned by Vite in start order — read what each terminal prints rat
 
 ## Conventions
 
-- **`master` is trunk**, currently == v6. An integration branch per version (`v6`) with
+- **`master` is trunk**, currently == v6; **v7 is in flight** on a `v7` branch in every repo. An integration branch per version (`v6`) with
   milestone branches off it, merged back `--no-ff` when that milestone's gate passes, then
   deleted. Small fixes go straight to the integration branch; branches are for milestones.
 - **Push only integration branches and `master`** — milestone/feature branches stay local. Push

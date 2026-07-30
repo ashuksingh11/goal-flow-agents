@@ -1,28 +1,21 @@
 # GoalFlow — Final Demo Run-Sheet
 
 The end-to-end demo script for the **general goal-based agent** on a Samsung Family Hub.
-v3.1 splits the surfaces by moment: the **chat UI is where you CREATE a goal** (speak it,
-confirm what the agent understood, approve the plan), and the **Agent Board is where a
-goal LIVES** — the full plan detail, monitoring, the world-event simulation, and any
-world-event approvals. Once the initial plan is approved, the chat hands off and the board
-takes over.
 
 > **Thesis (say it once up front):** *one general agent + a pluggable Family-Hub product
-> pack.* The LLM **plans** (Semantic Kernel over the device's plugins); **code checks** (a
-> deterministic safety filter + a pre-check engine + a real task ledger); the human
-> approves; the agent keeps adapting as the world changes. The harness is five generic
-> components; the fridge is a swappable product pack behind one interface.
+> pack.* The LLM **plans**; **code checks** — a deterministic safety filter, a pre-check
+> engine, a real task ledger; the human approves; and the agent keeps adapting as the world
+> changes. The harness is five generic components; the fridge is a swappable product pack
+> behind one interface.
 
-> **v6 (newest) — constraints that fit the goal.** Household rules are now sourced, scoped
-> and expiring, and resolved **per goal**: a trip carries a travel cap and an away window
-> where a meal week carries the $120 grocery cap; two goals draw on one **household
-> envelope**; and a rule you simply *say* ("we've gone vegan") is captured, confirmed, and
-> enforced from then on. **Act 1b** below is the v6 walk-through.
+> **The two surfaces (say it once):** *Chat = create. Board = live.* You speak a goal into
+> Bixby, the chat surface shows what it understood and what it plans, you sign off — and
+> from then on the goal LIVES on the Agent Board.
 
-> **The two surfaces (say it once):** *Chat = create. Board = live.* You talk to the agent
-> on the chat surface to start a goal and sign off on its plan; then the board drives the
-> goal's whole life — you watch it, simulate the world, and steer it there. Both are just
-> web UIs on the cloud hub; the board is the device's face, logically, via the hub.
+> **v7 — two goals, and the moment one changes the other.** Three acts and a closer: create
+> a meal week; let a day pass and watch it adapt; then create a home-away goal whose
+> approval **rewrites the meal week without asking**. It ends on a goal the Hub refuses,
+> because knowing what it will not do is part of trusting what it will.
 
 ---
 
@@ -121,274 +114,103 @@ browser). `?device=<id>` pins a tab for scripted runs.
 
 ## ⭐ THE SCRIPT — every prompt, in order
 
-**Everything you type goes into the Bixby surrogate** (the chat surface has no composer
-since v4.1). Watch the **chat UI** while a goal is being created, the **board** for
-everything after. Run them in this order — steps 8–10 depend on money having been spent in
-steps 1–4.
+**Everything you type goes into the Bixby surrogate.** Watch the **chat UI** while a goal
+is being created and the **board** for everything after.
 
 Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the cloud's
-`.env` (keeps captures off the committed seed), and a fresh device world
+`.env` (keeps the run off the committed seed), and a fresh device world
 (`rm -rf data-run1`).
 
 | # | Say this into Bixby | What to expect | What you do |
 |---|---|---|---|
-| 0 | *(nothing — open the board)* | **Upcoming & Suggested**: "Expiring Soon · 4 items within 3 days · spinach, yogurt, bread, chicken breast" and "Grocery Restock · 5 items running low" | Just show it: it acted before being asked |
-| 1 | **Plan our dinners this week, healthy and using up what's in the fridge.** | Understanding card, chips: budget **$120** · quiet hours 21:30–07:00 · peanut allergen · no-pork · low-sodium · envelope **$600 monthly** | **Confirm & plan** → watch the working column (~30–60s) → **Approve & Save** |
-| 2 | **Get the house ready, we're away all next week.** | Chips: budget **$1500** (travel, *not* $120) · **away** *(two real dates)* · same allergens | Confirm & plan → approve |
-| 3 | **Cut our electricity bill this month.** | Chips: **peak tariff 17:00–21:00** · **no** away window | Confirm & plan → approve |
-| 4 | **Prepare my son's birthday party next Sunday.** | Chips: budget **$200** (party) | Confirm & plan → leave the **order** toggled ON and **Approve & Save** (this is the spend that sets up step 10) |
-| 5 | **We've gone vegan.** | Header reads **REMEMBERING** · card "Something to remember" · one rule *no meat, no dairy, no eggs, no honey* · your words quoted · **ENFORCED** badge · **no board card** | **Remember this** → *"Noted — I'll remember that…"* |
-| 6 | **Plan our dinners for next week.** | The dietary chip now carries the vegan rule; its provenance row says it came from **chat** | Confirm & plan (or decline — the point is the chip) |
-| 7 | **Actually we can eat pork again.** | **Nothing is captured.** A chat message may tighten a rule, never relax one | Nothing — that IS the beat |
-| 8 | **Raise the party budget to $900.** | Refused for the same reason — no proposal | Nothing |
-| 9 | **Prepare my son's party next Sunday, and keep it under $150.** | Proposed as a **goal-scoped** cap; the dispatch carries **$150**, not the standing $200 | Tick it → Confirm & plan |
-| 10 | **Keep the kitchen stocked for less this week.** | Its ceiling is now `min($120, $600 − spent)`; once spend has eaten the envelope it raises *"Another goal has spent from the household budget…"* and re-plans | Confirm & plan → watch the adaptation |
-| 11 | *(nothing — press **Advance day** on the board)* | The world ticks once and fans out over **every** goal: expiring items, an RSVP change, a delivery due while away; each goal re-resolves its ceiling | Approve any adaptation it proposes |
+| 1 | **Plan my weekly meal.** | Confirmation card: **three** constraint chips (peanut allergen · no pork · low sodium), each with its source underneath, and **two preferences** — *prefers white meat*, *workout-friendly*. No budget, no quiet hours. | **Confirm & plan** → watch it work → **Approve & Save** |
+| 2 | *(nothing — press **Advance day** on the board)* | "What happened today" lists **two** things: Rohan's 12,400 steps, and 500 g of fish delivered. The meal card flags a review. | Open the card → **Adapt** → tomorrow becomes a high-protein fish dinner, and the *why* names **both** facts |
+| 3 | **We'll be out ⟨day after tomorrow⟩ and ⟨the day after⟩ — get my home ready.** | Confirmation card: **no constraint chips**, three preferences — SmartThings away routine · energy saving · finish perishables. Plan: pause deliveries, away routine, arm security, **return readiness**. | Confirm & plan → **Approve & Save** |
+| 4 | *(nothing — this is the moment)* | The chat holds **"Saving, and updating your other goals…"**. On the board the **meal card** gains one line: *"Plan changed — you're away Thu & Fri. Review."* | Open the meal goal: those two days now read **"Away — no meal planned"** |
+| 5 | *(press **Advance day** twice)* | Quiet days — nobody is home. The home-away goal reaches 100% and moves to completed. | Just narrate it |
+| 6 | **Find me a new apartment closer to my office.** | The chat opens, says this is not something this home can do, and **closes itself** after ~4s. Nothing is created on the board. | Nothing — that IS the beat |
 
-> **What is guaranteed and what is not.** Steps 1–10 are deterministic in what they
-> RESOLVE (the chips, the caps, the captured rule) — that is code. What the model chooses
-> to PROPOSE is not: it may not offer a peak-hour appliance run to block, and the size of a
-> grocery order varies. Never promise a specific proposal from the stage.
+> **Say the real weekday names in step 3.** The away window is whatever you say it is, so
+> "the day after tomorrow and the day after that" is what keeps the demo correct on any day
+> of the week. Presenting on a Tuesday? Say "Thursday and Friday".
 
-**If you want to show a constraint actually blocking** (the "code checks" moment): the
-window rules bite at **actuation**, when you approve. Say
-*"Get the house ready, we're away next week, and run the dishwasher on Wednesday while
-we're gone"*, then approve the appliance proposal — it comes back **blocked** with
-*"…inside away_window … nobody is home"*, and is not marked executed. If the planner
-declines to propose it (it often should), fall back to the deterministic proof:
-
-```bash
-cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh   # gates 1–21
-```
-
-**Between runs:** stop the device, `rm -rf data-run1`, delete
-`data/memory/demo_profile.json`, restart. Nothing in the repo is dirtied.
+> **What is guaranteed and what is not.** The chips, the preferences, the two-event day, the
+> cross-goal rewrite and the refusal are **code** — deterministic, and gated. What the model
+> chooses to COOK, and how it words a rejection, is not. Never promise a specific dinner
+> from the stage.
 
 ---
 
-## The board is home (open with this)
+## Act 1 — Create the meal goal (chat surface)
 
-Open the Agent Board. Even with **no goals yet**, it's already working: an **Upcoming &
-Suggested** section shows cards the agent raised on its own by scanning the fridge —
-**"Expiring Soon · 4 items within 3 days"** (spinach, yogurt, bread, chicken breast) and
-**"Grocery Restock · 5 items running low"** (rice, toor dal, tortilla wraps, onions, milk).
-Both counts come from the seed and the 3-day horizon in `InventorySuggester`, so they move if
-you edit `data/inventory.json`.
-
-> *Say:* "This is the home screen. Before I've asked for anything, it has already looked
-> at the fridge and is offering to act. Everything on this board is one glance — what's
-> running, how far along, what needs me."
-
----
-
-## Act 1 — Create a goal on the chat surface (understanding → plan → approve)
-
-1. **Start a goal.** On the real Hub you press the agent icon and *speak* it; in the demo,
-   accept the board's **"Expiring Soon"** suggestion (tap **+**) or type it into the
-   **Bixby surrogate** (v4.1 moved goal entry there — the chat surface has no composer):
-   *"Plan meals that use up the food expiring this week."*
-   - *Say:* "I talk to the agent to start a goal. On the Hub that's my voice; here it's the
-     chat surface. It even offered this one itself — I'm just saying yes."
-2. **The chat takes over — confirm the understanding.** The chat shows the **Understanding
-   card**: the objective restated, and the household's hard constraints as chips (no-pork,
-   the low-sodium medical need, budget **$120**, quiet hours **21:30–07:00**, peanut
-   allergen). Click **Confirm & plan.**
-   - *Say:* "Before it plans, it shows me what it *heard* — I sign off on the understanding,
-     not the plan yet. That's the first gate."
-3. **Watch it think** (~30–60s). Tool-call chips check off as the LLM calls the device's
-   plugins — `Inventory · GetExpiringItems ✓`, `Recipes · FindRecipes ✓`,
-   `FamilyProfiles · GetProfiles ✓`. The plan reveals as the hero: the week's dinners that
-   **use up the expiring items**, a green **Safety ✓ passed** chip, an **impact badge**.
-   Meanwhile the **board card** (other tab) fills in live — progress, next step, pending.
-   - *Say:* "The fridge agent calls its own tools; the model plans; nothing's hardcoded. And
-     the plan was checked by **code** — allergens, the low-sodium need, the budget cap."
-4. **Approve (tiered).** The approvals block is headed **"What happens when you save"** with a
-   count — *"2 automatic · 2 your choice"*. Auto-tier effects are already **receipts** (✓, "done
-   automatically"); a light effect is a **toggle** you can leave off; a firm one (spending money,
-   e.g. placing the grocery order) renders heavier. Flip what you want and press
-   **Approve & Save** once — the footer tells you exactly what it will save, and afterwards it
-   reads *"Saved — your Family Hub is on it."*
-   - *Say:* "Nothing above 'automatic' happens until I press this. The ones that spend money say
-     so, and I can leave any of them out.
-5. **The hand-off.** The chat shows a green banner: **"Plan approved — your Agent Board is
-   now driving this goal."** That's the cue to switch to the board.
-   - *Say:* "Creation is done. Everything from here — watching it, changing it as the week
-     unfolds — happens on the board. The chat's job was to start it and get my sign-off."
+1. **Speak it.** *"Plan my weekly meal."* The chat surface opens on its own.
+2. **The confirmation gate.** Three constraints, each with **where it came from** written
+   underneath — *Account · always enforced*. Then two **preferences**, outlined rather than
+   filled, because a preference shapes a plan and can never block one.
+   - *Say:* "Before it plans, it shows me what it heard — and where each rule came from. I
+     sign off on the understanding, not the plan."
+3. **Watch it work** (~30–90s). The harness pipeline lights up engine by engine, each
+   reporting a real number — *23 items · 4 expiring*, *12 considered, 1 rejected*, *3 rules
+   held*. Open **Show details** for the labelled steps, including during planning.
+   - *Say:* "Every number there is something it measured. The pipeline reports work; it
+     isn't an animation."
+4. **The plan.** Each day carries its **why** in cause-and-effect terms, and underneath it,
+   what the planner **considered and rejected** — with the constraint that ruled each out.
+   - *Say:* "A lookup table cannot reject. That line is the clearest evidence you'll get
+     that something reasoned about this week."
+5. **Approve & Save** → *"Saving your meal plan…"* → the chat closes itself.
 
 ---
 
-## Act 1b — v6: the constraints fit the goal (and the agent remembers)
+## Act 2 — A day passes (board)
 
-*New in v6. Everything below runs on the same stack — nothing extra to start.* The
-one-line pitch: **through v5 every goal got the same meal-shaped household.** A vacation
-goal was dispatched the **$120 weekly grocery cap** as its trip ceiling, plus "prefer more
-vegetables" and "dislikes mushrooms". v3.5 made the planner generic per domain; the
-constraints it planned against never followed. See [DESIGN.md](DESIGN.md) §5.
-
-### 1b-i · The same household, a different set of constraints per goal
-
-Start these one at a time and read the **Understanding card's chips** (the chat surface):
-
-| Say | Chips you should see |
-|---|---|
-| *"Plan our dinners for this week"* | budget **$120**, quiet hours 21:30–07:00, peanut allergen, no-pork, low-sodium, envelope **$600 monthly** |
-| *"Get the house ready, we're away all next week"* | budget **$1500** (travel — not $120), **away** *(two ISO dates)*, and the same allergens/dietary/medical |
-| *"Prepare my son's birthday party next Sunday"* | budget **$200** (party) |
-| *"Cut our electricity bill this month"* | **peak tariff 17:00–21:00**, and NO away window |
-
-> *Say:* "Same family, same store of rules — but a trip is constrained like a trip. The
-> allergens ride on every goal; only the caps and windows change. That is deliberate: a
-> wrong cap costs a noisy plan, a dropped allergen costs something else entirely."
-
-The cloud terminal shows the resolution:
-`graph_node_exit node=load_memory family_id=family-hub-demo domain=vacation_prep applied=13 picked=relevance`.
-(`applied` counts hard + soft rows and shifts with what the relevance pass picks; `picked=tags`
-means the LLM pass returned nothing and the tag fallback ran.)
-
-### 1b-ii · It is enforced, not just displayed
-
-**Where the block actually happens:** side-effecting tools are not exposed while the model
-plans, so the window constraints bite at **actuation** — the moment you tap **Approve**. A
-refused proposal comes back as **blocked** with the reason (*"…inside away_window … nobody
-is home"*), it is **not** marked executed, and the rest of the approval still goes through.
-
-*Live:* on a vacation goal, ask for something mid-trip — *"…and run the dishwasher on
-Wednesday while we're away"* — then approve the appliance proposal. **Not guaranteed**: the
-planner may decline to propose it at all, which is the model doing the right thing. Do not
-stake a stage demo on catching it.
-
-*Deterministic (this is the proof to show):*
-
-```bash
-cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh
-```
-
-Gate 6 (28 cases) has the rule rows: a dishwasher run **inside the away window** is blocked
-*"nobody is home"*; an 18:00 run is blocked on an energy goal (peak tariff) and **allowed**
-on a guest dinner, because that goal carries no peak window. Gate 21 drives the **real
-approval path** and proves the refusal is reported as a refusal rather than as success —
-which is exactly what it used to do.
-
-### 1b-iii · Two goals, one wallet (the household envelope)
-
-1. Create the **party** goal and approve its grocery order (that is what spends money).
-2. Create a **grocery** goal — *"keep the kitchen stocked for less this week"* — or
-   **Advance a day** with one already running.
-3. The second goal's ceiling is now `min(its cap, $600 − spent)`, and it raises a material
-   change: *"Another goal has spent from the household budget…"* → it re-plans.
-
-> *Say:* "Per-goal caps cannot see each other — a $200 party and a $120 grocery week each
-> fit their own ceiling and together blow the month. They draw on one envelope now."
-
-Deterministic version: gate 20 in the chain above.
-
-### 1b-iv · Say it once, and it is remembered (capture)
-
-On the **input surface** (`goal-flow-agent-bixby-ui` — the chat surface has no composer
-since v4.1), say a *statement* rather than a goal:
-
-1. **"We've gone vegan."** The chat surface shows a card headed **REMEMBERING /
-   Something to remember** — one rule, *no meat, no dairy, no eggs, no honey*, your own
-   words quoted back, an **ENFORCED** badge, ticked but clearable. Press **Remember this**
-   → *"Noted — I'll remember that: vegan diet."* **No board card** — nothing is going to run.
-2. **Now start a meal goal.** The dietary chip carries the new rule, and the provenance row
-   says it came from **chat**.
-3. **The refusals are the point** — try them:
-   - *"Actually we can eat pork again"* → no proposal. A chat message may tighten a rule,
-     never relax one.
-   - *"Raise the party budget to $900"* → refused for the same reason.
-   - *"Prepare my son's party next Sunday, and keep it under $150"* → proposed as a
-     **goal-scoped** cap: the dispatch carries **$150** (not the standing $200), and it
-     expires at the goal's horizon so it cannot cap every birthday after this one.
-
-> *Say:* "It heard a household rule and asked before believing it. The model proposes; the
-> person disposes. Nothing is written by silence."
-
-**Keep the seed clean.** Capture WRITES to the constraint store, so point the cloud at a
-scratch copy before the demo — the cloud's equivalent of the device's `--data`:
-
-```bash
-# in goal-flow-cloud-agent/.env (or exported before ./run.sh)
-GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json
-```
-
-The file is created and seeded from the repo's copy on first use; delete it for a clean
-household. If you forget and demo against the seed, restore it with
-`git checkout -- data/memory/family_profile.json`.
+1. **Advance day.** Two things happened overnight and only one needs you: a hard training
+   day (informational) and a fish delivery (material).
+   - *Say:* "Telling me something happened and asking me to approve a change are different
+     acts. It does both, and it knows which is which."
+2. **Adapt.** The card flags a review; the goal detail proposes a swap whose reason names
+   **both** facts. Approve, and the day morphs in place with an **Updated** badge.
 
 ---
 
-## Act 2 — Advance the world a day (v3.2): the board runs the whole home
+## Act 3 — The home-away goal, and the moment it changes the other one
 
-The world simulation lives on the **main board** now, as one global **Advance day** — the
-device's sim clock is device-wide, so one tick moves the world for *every* goal at once.
-
-1. **Peek at a goal (optional).** Tap a card → its **detail page**: the full 7-day plan, the
-   "Knew" constraints, Safety ✓, impact, and a **What has happened** history. Tap **‹ Board**
-   to go back. (No jumping to the chat — the board owns this.)
-2. **Advance a day.** On the main board, press **Advance day**. The sim clock steps forward
-   once (whatever today is — the clock is anchored to the real date), and a
-   **"What happened today"** card appears below it listing the
-   day's world events — *"Fresh groceries arrived — affects Weekly Meal Plan"* — and which
-   goals each touched. **Every goal card updates**: its **progress % advances by the day**,
-   and a goal the change affected flags **"⚠ Approval needed."**
-   - *Say:* "The device is a long-running service watching the world. One tap advances the day
-     for the whole home — and it tells me exactly what happened and which goals it moved."
-3. **Approve the change — where it's flagged.** Tap the flagged **"Approval needed"** card →
-   its detail page shows a **"Caught a change"** card — *"fold the new chicken into Day 2."*
-   Click **Adapt.**
-   - *Say:* "It re-planned just the slice that changed, and it asks me right where the card
-     told me to look — not on some chat window I've closed."
-4. **The plan morphs in place.** The affected day updates with an **Updated** badge and an
-   impact delta; the history logs the swap; back on the board the card clears its flag.
-   (Decline instead and the adaptation still resolves — the flag clears either way; the plan
-   just keeps its current shape. v3.6.2.)
-5. **Keep advancing.** Press **Advance day** a few more times — quiet days show *"nothing
-   changed,"* busy days surface the next event and move the cards along.
-   - *Say:* "The plan is alive across the week — it advances by the day and re-plans just the
-     slices that change, all from the one screen."
+1. **Speak it.** *"We'll be out ⟨two weekdays⟩ — get my home ready."*
+2. **No constraint chips**, three preferences. The food rules still ride on the dispatch and
+   are still enforced — they simply cannot bite on any step of a home-prep plan.
+   - *Say:* "Same household, same store of rules. A trip is constrained like a trip."
+3. **The plan** pauses non-essential deliveries — never the repeat prescription, which the
+   function refuses outright — hands the house to the SmartThings away routine, arms
+   security, and ends with **return readiness**: resume the deliveries, run the robot
+   vacuum, and plan the first meal back against a fridge that was deliberately emptied.
+   - *Say:* "A checklist that ends at the front door has planned a departure, not a trip."
+4. **Approve & Save.** The chat holds **"Saving, and updating your other goals…"** for as
+   long as the work takes — the cloud does it *before* it closes the webview.
+5. **The board.** The meal card now says *"Plan changed — you're away Thu & Fri. Review."*
+   Open it: those two days read **"Away — no meal planned · from Get my home ready"**, and
+   the detail page carries an **Already applied** notice with a *Got it* — not an approval.
+   - *Say:* "I approved being away when I saved the second goal. Asking again — 'you said
+     you're away Thursday, shall I stop planning Thursday's dinner?' — would be asking the
+     same question twice. So it changed the plan, and it told me."
+6. **Advance day twice.** Quiet days; nobody is home. The home-away goal completes.
 
 ---
 
-## Act 3 — The board full of goals + the range
+## The closer — what it will not do
 
-1. **Several goals at once — the range (v3.4).** The demo isn't "AI meal planning": it's a
-   general Goal Runtime, so show goals that each prove a *different* capability. Start more
-   (chat surface, or board **New Goal**):
-   - *"Get the house ready, we're away all next week."* — the goal **v2 refused** as
-     out-of-scope. It runs now because the device advertises Security/Appliance/Reminders
-     and the cloud judges against *that*: lock doors, arm security (pre-checked against the
-     cameras), run the dishwasher and washer before quiet hours, hold deliveries, and use up
-     the food that would spoil while away. The appliances in this world are oven, dishwasher,
-     washer, fridge and TV — **there is no thermostat**, so don't promise one.
-     *(smart-home orchestration + the precheck gate.)*
-   - *"Plan my son Aarav's birthday party next Sunday for 20 kids."* — routes to the
-     birthday domain; costs the cake + supplies against the **$200 party cap** (v6 — the
-     account carries a per-domain cap; it is not the $120 grocery week). *(dynamic replanning
-     + budget + cross-app.)*
-   - *"Keep our kitchen stocked while spending less on groceries."* — `grocery_cost`:
-     restock to threshold, priced against the budget book; a `PlaceOrder` over the cap is
-     **blocked by the firm-tier safety rule**, not merely discouraged. *(continuous cost
-     optimisation + a real budget block.)*
-   - *"Cut our electricity bill 15% without hurting comfort."* — `energy_saving`: shift
-     heavy appliance runs off-peak, prefer eco cycles, kill standby waste — against a
-     **measurable target**. *(continuous optimisation with a number to hit.)*
-   Now the board shows a **card per goal** across five distinct domains. **Since v3.6 each
-   card is goals-first** — it leads with the outcome and progress bar, then three lines that
-   tell the goal's story: **✓** what's done · **⏳** what it's waiting on (tap to review) ·
-   **➡** what's next, with a **⚠** line if something needs attention. The summary bar tallies
-   **On Track / At Risk / Waiting** at a glance. (ETA and the full step list are one tap in,
-   on the detail page.)
-   - *Say:* "This is why the board exists — several long-running goals of different kinds,
-     one screen. The chat started each one; the board runs them all. Same five components
-     under every card."
-2. **The honest negative path.** Simulate the world breaking — flip a flag a goal needs
-   (e.g. `smartthings_connected` false in the agent's `data/device_state.json`) and start a
-   goal that needs it. The card goes **Waiting** — not a false green — with the fix as its
-   next step (*"you are signed out — sign in and this will resume"*). It **holds**; it
-   doesn't pretend to finish.
-   - *Say:* "When the world isn't ready, it says so honestly — Waiting, with what to do.
-     That's a different gate from 'not allowed' (safety) and 'needs you' (approval)."
+**"Find me a new apartment closer to my office."**
+
+The chat opens, says this is outside what the home can act on, names what it *can* do, and
+closes itself after about four seconds. There is no dismiss button: a refusal needs no
+action from anyone.
+
+> *Say:* "It knows its edges. That's the same judgement that stops it inventing a plan it
+> can't deliver."
+
+**Backup prompts**, in confidence order: *"Help me file my income tax return this year."* ·
+*"Book my flights and hotels for Kerala next week and plan the sightseeing."* The refusal is
+an LLM judgement against the device's advertised capabilities, so rehearse whichever you
+plan to use.
 
 ---
 
