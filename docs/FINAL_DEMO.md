@@ -118,6 +118,53 @@ browser). `?device=<id>` pins a tab for scripted runs.
 
 ---
 
+## ⭐ THE SCRIPT — every prompt, in order
+
+**Everything you type goes into the Bixby surrogate** (the chat surface has no composer
+since v4.1). Watch the **chat UI** while a goal is being created, the **board** for
+everything after. Run them in this order — steps 8–10 depend on money having been spent in
+steps 1–4.
+
+Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the cloud's
+`.env` (keeps captures off the committed seed), and a fresh device world
+(`rm -rf data-run1`).
+
+| # | Say this into Bixby | What to expect | What you do |
+|---|---|---|---|
+| 0 | *(nothing — open the board)* | **Upcoming & Suggested**: "Expiring Soon · spinach, yogurt", "Grocery Restock" | Just show it: it acted before being asked |
+| 1 | **Plan our dinners this week, healthy and using up what's in the fridge.** | Understanding card, chips: budget **$120** · quiet hours 21:30–07:00 · peanut allergen · no-pork · low-sodium · envelope **$600 monthly** | **Confirm & plan** → watch the harness pipeline (~30–60s) → **approve both** proposals |
+| 2 | **Get the house ready, we're away all next week.** | Chips: budget **$1500** (travel, *not* $120) · **away** *(two real dates)* · same allergens | Confirm & plan → approve |
+| 3 | **Cut our electricity bill this month.** | Chips: **peak tariff 17:00–21:00** · **no** away window | Confirm & plan → approve |
+| 4 | **Prepare my son's birthday party next Sunday.** | Chips: budget **$200** (party) | Confirm & plan → **approve the order** (this is the spend that sets up step 10) |
+| 5 | **We've gone vegan.** | Header reads **REMEMBERING** · card "Something to remember" · one rule *no meat, no dairy, no eggs, no honey* · your words quoted · **ENFORCED** badge · **no board card** | **Remember this** → *"Noted — I'll remember that…"* |
+| 6 | **Plan our dinners for next week.** | The dietary chip now carries the vegan rule; its provenance row says it came from **chat** | Confirm & plan (or decline — the point is the chip) |
+| 7 | **Actually we can eat pork again.** | **Nothing is captured.** A chat message may tighten a rule, never relax one | Nothing — that IS the beat |
+| 8 | **Raise the party budget to $900.** | Refused for the same reason — no proposal | Nothing |
+| 9 | **Prepare my son's party next Sunday, and keep it under $150.** | Proposed as a **goal-scoped** cap; the dispatch carries **$150**, not the standing $200 | Tick it → Confirm & plan |
+| 10 | **Keep the kitchen stocked for less this week.** | Its ceiling is now `min($120, $600 − spent)`; once spend has eaten the envelope it raises *"Another goal has spent from the household budget…"* and re-plans | Confirm & plan → watch the adaptation |
+| 11 | *(nothing — press **Advance day** on the board)* | The world ticks once and fans out over **every** goal: expiring items, an RSVP change, a delivery due while away; each goal re-resolves its ceiling | Approve any adaptation it proposes |
+
+> **What is guaranteed and what is not.** Steps 1–10 are deterministic in what they
+> RESOLVE (the chips, the caps, the captured rule) — that is code. What the model chooses
+> to PROPOSE is not: it may not offer a peak-hour appliance run to block, and the size of a
+> grocery order varies. Never promise a specific proposal from the stage.
+
+**If you want to show a constraint actually blocking** (the "code checks" moment): the
+window rules bite at **actuation**, when you approve. Say
+*"Get the house ready, we're away next week, and run the dishwasher on Wednesday while
+we're gone"*, then approve the appliance proposal — it comes back **blocked** with
+*"…inside away_window … nobody is home"*, and is not marked executed. If the planner
+declines to propose it (it often should), fall back to the deterministic proof:
+
+```bash
+cd goal-flow-device-agent-ubuntu && ./verify/v6-m3/check.sh   # gates 1–21
+```
+
+**Between runs:** stop the device, `rm -rf data-run1`, delete
+`data/memory/demo_profile.json`, restart. Nothing in the repo is dirtied.
+
+---
+
 ## The board is home (open with this)
 
 Open the Agent Board. Even with **no goals yet**, it's already working: an **Upcoming &
