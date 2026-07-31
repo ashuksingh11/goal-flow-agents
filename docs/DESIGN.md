@@ -360,7 +360,7 @@ Shape, at a glance: `hello`/`hello_ack` · `devices`/`select_device` · `capabil
 · `dispatch` · `agent_event` (the live stream: `phase`, `thinking`, `tool_call`, `tool_result`,
 `task_update`, `harness`, `plan_progress`) · `plan_ready` · `present_plan` · `approval` ·
 `proposal` · `status` · `control` · `day_advanced` · `board_snapshot`/`board_update`/`board_get` ·
-`goal_state_get` · `goal_accepted` · `suggestions`/`suggestion_action`.
+`goal_state_get` · `goal_accepted`.
 
 **Surface-aware delivery.** A `hello.surface` of `"input"` receives only `hello_ack`,
 `goal_accepted`, `chat_ui_open`, `chat_ui_close` and `notice` — Bixby is a native app that would
@@ -431,7 +431,7 @@ the plan, say the same thing in the reader's language. **It is a first-class sur
 never wrote, and v3.1 reversed that: the goal's whole life after creation happens here.
 
 It sends `hello`, `select_device`, `board_get`, `goal_state_get`, `user_goal`,
-`suggestion_action`, **`approval`** (adaptations, on the goal-detail page) and **`control`**
+**`approval`** (adaptations, on the goal-detail page) and **`control`**
 (**Advance day** — one global world tick, a goal-less frame that fans out over every active
 goal, landing on the day it advances to with real dates like "Tue, Jul 22"). It never sends
 `dispatch`: the hub-only invariant holds.
@@ -469,9 +469,13 @@ cheaper one) is real but depends on the planner proposing the expensive cart in 
 so it is not something to promise from a stage. The **AX refusal** the v3 plan wanted is not
 demoable at all — see §4.
 
-**Proactive suggestions** come from deterministic device reads (inventory low, expiring soon)
-sent as `suggestions` and folded into cards by rule — no unprompted LLM calls. Tapping **+**
-synthesizes a `user_goal` through the normal pipeline, understanding gate and all.
+**Proactive suggestions were removed in v7.1.** The device scanned its own inventory and
+offered goals nobody asked for — expiring food, low stock — as an "Upcoming & Suggested" strip
+above the goals. The mechanism worked and the strip was noise: it appeared unbidden next to
+work the user had actually commissioned, and on a board whose whole claim is "these are the
+goals you gave me", a card the user never asked for is the one thing that has to earn its
+place. It didn't. The device scan, the `suggestions`/`suggestion_action` frames and the
+board's section are all gone.
 
 ---
 
@@ -480,15 +484,20 @@ synthesizes a `user_goal` through the normal pipeline, understanding gate and al
 Gates, not tests, and the rule is that **a gate you have not broken is a gate you do not
 trust** — every one of these was falsified before it was believed.
 
-**Device** — `verify/*/check.sh`, each chaining the previous. `./verify/v6-m3/check.sh` runs the
-whole chain, gates 1–21, no API key needed. Highlights: gate 3 (harness product-string debt),
-gate 5 (per-goal policy isolation), gate 6 (28 safety-rule cases), gate 7 (grade ratchet + AX),
-gate 8 (task lifecycle + DAG), gate 9 (prechecks), gate 11 (trace isolation), gate 19 (one cap,
-from the account), gate 20 (two goals, one wallet), gate 21 (a refusal is reported as a refusal).
+**Device** — `verify/*/check.sh`, each chaining the previous. `./verify/v7-m7/check.sh` runs the
+whole chain, no API key needed. Highlights: gate 3 (harness product-string debt), gate 5
+(per-goal policy isolation), gate 6 (28 safety-rule cases), gate 7 (grade ratchet + AX), gate 8
+(task lifecycle + DAG), gate 9 (prechecks), gate 11 (trace isolation), gate 19 (one cap, from
+the account), gate 20 (two goals, one wallet), gate 21 (a refusal is reported as a refusal),
+gates 22–26 (the v7 chain, ending with an away day staying away), gate 28 (no grounding read is
+asked twice, and a tool that cannot satisfy a query says so). Gate 18 is RETIRED — it
+gated the proactive-suggestion scan, which v7.1 removed; `verify/m8/check.sh` survives as an
+empty link because v6-m2 chains it.
 
 **Cloud** — `python scripts/verify_*.py`: gate 10 generic actionability, 12 persistence across
-restart, 13 board fold, 14 contract mirrors, 15 constraint resolution, 16 chat capture. Gates
-15 and 16 need no API key, because the capture write path has no LLM in it.
+restart, 13 board fold (incl. v7.1's retire-on-advance-day), 14 contract mirrors, 15 constraint
+resolution, 16 chat capture, 17 cross-goal blast radius, 18 the webview outlasting its save,
+27 a refusal reaching its webview. Everything but 10 and 12 needs no API key.
 
 *The two numbering spaces are independent and they collide* — device gates 15/16 are the
 provider deadline; cloud gates 15/16 are constraints and capture. Say which side you mean.
@@ -520,6 +529,8 @@ Brief by design. The detail is in the code, the gates, and `git log`; the pre-me
 | **v5.2** | The panel redesign (confirm / run / plan, from `goal-flow2.pen`): the constraint chip grid, a motion vocabulary in `panel.css`, and the column learns to **scroll** — v5.1's never-scroll guarantee could not survive a full plan plus its approvals. |
 | **v6** | **Constraints with provenance** (§5): sourced, scoped, expiring, resolved per goal; cloud/device de-duplication; the household envelope across goals; capture-from-chat behind a confirmation gate. M1–M4. |
 | **v7** | The demo cut to **two goals and a refusal**, and the mechanisms that story needed. The household lost money and quiet hours entirely (§5). Display split from enforcement, so a goal can show no chips while still being blocked by every rule it carries. Preferences and provenance reached the screen for the first time. The planner stopped being silent (§7). **One goal now changes another** without asking (§5b) — the demo's headline. Activity data, deliveries and a robot vacuum joined the world; the board stopped speaking in function names; a refusal got a surface. M0–M7. |
+| **v7.1** | Five things the demo asked for after a live run. Proactive suggestions deleted outright — device scan, frames and board section (§8). A finished goal now leaves the board on the next Advance day. The refusal's webview was opening EMPTY: the `notice` was broadcast while Bixby was still mounting the iframe, so terminal notices joined the create-phase replay cache (gate 27). The device's decompose pass learned the domain — only compose knew it, so a home-away goal was being broken into meal steps by a model reading the household's food rules. And in *Show details*, an engine's prose now precedes the steps it announces. |
+| **v7.2** | Grounding stopped asking the same question over and over. A meal plan was spending ~4.5 minutes on ten-plus `Recipes.FindRecipes` calls that differed only in the ORDER of the tag list: the household prefers white meat, the recipe box is entirely vegetarian, and the tool answered a query it could not satisfy by returning everything in an unchanged order — indistinguishable, to a model, from "these are your best matches". Now the tool names the tags it could not match and says not to search again; a `RepeatReadFilter` makes any identical read (permuted list arguments included) cost one round-trip; and `AllowParallelCalls` is finally true, so independent reads batch into one turn instead of one round-trip each. The seed gained five recipes — three white meat, two red — because a preference with nothing to turn down is invisible: the plan now leads with chicken/turkey/fish and rejects beef and lamb *on the preference* while pork is rejected *by the hard rule*, two different kinds of no in one list. Measured on the same prompt: **336s+ and still looping → 148s to a finished plan**, 10+ recipe calls → 1. Gate 28. |
 
 ---
 

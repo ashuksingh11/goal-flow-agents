@@ -140,7 +140,7 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
 | 2 | *(nothing — press **Advance day** on the board)* | "What happened today" lists **two** things: Rohan's 12,400 steps, and 500 g of fish delivered. The meal card flags a review. | Open the card → **Adapt** → tomorrow becomes a high-protein fish dinner, and the *why* names **both** facts |
 | 3 | **We'll be out ⟨day after tomorrow⟩ and ⟨the day after⟩ — get my home ready.** | Confirmation card: **no constraint chips**, three preferences — SmartThings away routine · energy saving · finish perishables. Plan: pause deliveries, away routine, arm security, **return readiness**. | Confirm & plan → **Approve & Save** |
 | 4 | *(nothing — this is the moment)* | The chat holds **"Saving, and updating your other goals…"**. On the board the **meal card** gains one line: *"Plan changed — you're away Thu & Fri. Review."* | Open the meal goal: those two days now read **"Away — no meal planned"** |
-| 5 | *(press **Advance day** twice)* | Quiet days — nobody is home. The home-away goal reaches 100% and moves to completed. | Just narrate it |
+| 5 | *(press **Advance day** twice)* | Quiet days — nobody is home. The home-away goal reaches 100%, and the NEXT Advance day retires its card off the board. | Just narrate it |
 | 6 | **Find me a new apartment closer to my office.** | The chat opens, says this is not something this home can do, and **closes itself** after ~4s. Nothing is created on the board. | Nothing — that IS the beat |
 
 > **Say the real weekday names in step 3.** The away window is whatever you say it is, so
@@ -169,8 +169,12 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
      isn't an animation."
 4. **The plan.** Each day carries its **why** in cause-and-effect terms, and underneath it,
    what the planner **considered and rejected** — with the constraint that ruled each out.
+   Expect white meat to lead (chicken / turkey / fish) and the rejected list to hold **two
+   different kinds of no**: *beef chilli — red meat preference* and *pork belly — no pork
+   (hard constraint)*.
    - *Say:* "A lookup table cannot reject. That line is the clearest evidence you'll get
-     that something reasoned about this week."
+     that something reasoned about this week — and look at the two rejections: one is a
+     preference it weighed, the other is a rule it was never allowed to break."
 5. **Approve & Save** → the panel is taken over by *"Saving your plan to the device AI
    board"* for a beat, and then the chat closes itself. The dwell is enforced by the CLOUD,
    not the chat UI: Bixby unmounts the webview the instant `chat_ui_close` arrives, so a
@@ -220,6 +224,8 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
      dinner for a night we're in another city."
    - The first day BACK still adapts normally — the immunity is scoped to the away rows,
      not to the trip.
+   - The home-away card stays on the board at 100% for the tick it completes on, and the
+     NEXT Advance day retires it. A finished goal is a receipt, not work.
 
 ---
 
@@ -245,7 +251,7 @@ plan to use.
 
 Toggle **"Show agent flow"** in the chat UI to reveal the live **WS message feed**:
 `hello`, `user_goal`, streamed `agent_event`s (incl. `task_update`), `present_plan`,
-`approval`, `status`, `suggestions`, the board's `board_snapshot`/`board_update`, and the
+`approval`, `status`, the board's `board_snapshot`/`board_update`, and the
 world tick `day_advanced`. Pair with [DESIGN.md](DESIGN.md) — §4 for the five harness
 components, §6 for the frames.
 
