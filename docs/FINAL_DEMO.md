@@ -38,8 +38,19 @@ First-time-only install (once per repo): `.venv` + `pip install -e .` for the cl
 Five terminals. **These are the canonical commands.**
 
 ```bash
-# 1) cloud hub — binds 0.0.0.0:8000 and loads .env
-cd goal-flow-cloud-agent && source .venv/bin/activate && ./run.sh
+# 1) cloud hub — binds 0.0.0.0:8000 and loads .env.
+#    `rm -f` the SCRATCH constraint store first, exactly as the device wipes its scratch
+#    world below: .env points GOALFLOW_PROFILE_PATH at data/memory/demo_profile.json, and a
+#    previous run's approved away window is still sitting in it. Leave it and the demo
+#    breaks in two places — Act 1's meal card shows an away-window chip for a trip you have
+#    not mentioned yet, and Act 3's headline SILENTLY no-ops, because re-approving the same
+#    dates hits the idempotence guard, writes nothing, and never tells the meal plan.
+#    The file re-seeds itself from family_profile.json on first use. (*_profile.json is
+#    gitignored except the seed.)
+#    NAME THE FILE. `rm data/memory/*_profile.json` also matches family_profile.json —
+#    that glob deletes the seed.
+cd goal-flow-cloud-agent && rm -f data/memory/demo_profile.json && \
+  source .venv/bin/activate && ./run.sh
 # 2) device agent — dials the cloud (bare --connect defaults to ws://localhost:8000/ws).
 #    Run against a SCRATCH world dir so the repo's ./data seed stays pristine and no
 #    stale mock-world state carries between runs. `rm -rf` first = a clean world each time;
@@ -80,7 +91,9 @@ Dates are **relative to the real today** — the sim clock and plan dates just w
 Same commands, only endpoints change (both UIs derive the hub from whatever host served
 them):
 
-- **Cloud (Ubuntu):** `./run.sh` — on `0.0.0.0:8000`; open TCP 8000 if firewalled.
+- **Cloud (Ubuntu):** `rm -f data/memory/demo_profile.json && ./run.sh` — on
+  `0.0.0.0:8000`; open TCP 8000 if firewalled. The `rm` is not optional between demos; see
+  the note on the canonical command above.
 - **Board/chat (Ubuntu):** `npm run dev` — leave `VITE_WS_URL` unset. On the tablet browse
   to `http://<ubuntu-ip>:5174` (board) / `:5173` (chat); each connects to
   `ws://<ubuntu-ip>:8000/ws` automatically.
