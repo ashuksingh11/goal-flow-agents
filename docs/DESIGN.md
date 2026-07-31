@@ -317,6 +317,28 @@ greyed with their reason; a plan that merely got shorter says nothing about why,
 as data loss rather than as a decision. Gate 17 pins the blast radius, the idempotence and
 the self-retirement; gate 25 pins that the account still owns the policy.
 
+**And they stay empty.** A skipped day is not a hole for the next world event to fall into.
+The first version of this shipped without that rule and the demo undid its own headline one
+interaction later: the family approved the trip, both days went to "Away — no meal planned",
+and the next press of *Advance day* fired "the paneer spoiled" — whose steer says *change
+tonight's dinner* — against a day nobody is home. Two layers close it, because one is a
+judgement and the other is a guarantee: the observer stops raising such a change as
+material (so no re-plan is even attempted, and no approval is opened), and
+`DropSkippedRows` refuses any patch row whose incumbent is skipped, whatever produced it.
+The single exception is `constraints.changed` itself — the path that writes skipped rows is
+the only one that may clear them, or a cancelled trip could never give the family their week
+back. The change is still **told**: it stays in "what happened today" with the reason
+appended, because a family that is away still wants to know their fridge lost something.
+Gate 26 pins all three.
+
+**The webview outlasts the save.** `chat_ui_close` used to follow the approval within a
+round-trip, so the "Saving…" screen existed in the code and never on screen. The dwell
+cannot live in the chat UI — Bixby unmounts the webview the moment the close arrives, so a
+hold inside the iframe is a hold nobody sees. The cloud owns the bracket and therefore the
+dwell: a floor for the ordinary hand-off, and for a household change, a bounded wait until
+the re-planned goal actually reports back, so the user reaches a board that already has the
+change. Gate 18 pins the floor, the wait and the bound.
+
 **`GOALFLOW_PROFILE_PATH`** points the store at a scratch copy — the cloud's equivalent of the
 device's `--data`. A path that does not exist yet is seeded from the committed profile on first
 use, so a demo run never dirties the seed.

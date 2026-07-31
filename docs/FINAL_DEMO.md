@@ -158,7 +158,10 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
    what the planner **considered and rejected** — with the constraint that ruled each out.
    - *Say:* "A lookup table cannot reject. That line is the clearest evidence you'll get
      that something reasoned about this week."
-5. **Approve & Save** → *"Saving your meal plan…"* → the chat closes itself.
+5. **Approve & Save** → the panel is taken over by *"Saving your plan to the device AI
+   board"* for a beat, and then the chat closes itself. The dwell is enforced by the CLOUD,
+   not the chat UI: Bixby unmounts the webview the instant `chat_ui_close` arrives, so a
+   hold implemented inside the iframe is a hold nobody sees.
 
 ---
 
@@ -184,15 +187,26 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
    security, and ends with **return readiness**: resume the deliveries, run the robot
    vacuum, and plan the first meal back against a fridge that was deliberately emptied.
    - *Say:* "A checklist that ends at the front door has planned a departure, not a trip."
-4. **Approve & Save.** The chat holds **"Saving, and updating your other goals…"** for as
-   long as the work takes — the cloud does it *before* it closes the webview.
+4. **Approve & Save.** The chat holds **"Saving this goal, and updating your other
+   goals…"** for as long as the work takes — the cloud waits for the meal week to actually
+   report its new plan before it closes the webview, so the board already has the change by
+   the time the user gets there. Expect ~20-30s: it is a real re-plan on the device.
+   - *Say:* "It is not spinning for effect. The second goal is being re-planned while you
+     watch, and this closes when that is done.
 5. **The board.** The meal card now says *"Plan changed — you're away Thu & Fri. Review."*
    Open it: those two days read **"Away — no meal planned · from Get my home ready"**, and
    the detail page carries an **Already applied** notice with a *Got it* — not an approval.
    - *Say:* "I approved being away when I saved the second goal. Asking again — 'you said
      you're away Thursday, shall I stop planning Thursday's dinner?' — would be asking the
      same question twice. So it changed the plan, and it told me."
-6. **Advance day twice.** Quiet days; nobody is home. The home-away goal completes.
+6. **Advance day twice.** Nobody is home, and the meal week knows it: world events on
+   those two days are still REPORTED — the paneer really did spoil — but they raise no
+   approval and cannot re-plan a day the household already emptied. The home-away goal
+   completes.
+   - *Say:* "Something happened in the kitchen and it told me. It didn't ask me to pick a
+     dinner for a night we're in another city."
+   - The first day BACK still adapts normally — the immunity is scoped to the away rows,
+     not to the trip.
 
 ---
 
