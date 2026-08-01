@@ -28,7 +28,20 @@ in the two `.env` files and use a **paid** model (free `:free` models are rate-l
 # goal-flow-cloud-agent/.env  and  goal-flow-device-agent-ubuntu/.env:
 OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_MODEL=openai/gpt-oss-120b     # a real tool-calling model
+OPENROUTER_PROVIDER_ORDER=cerebras,groq  # v8 — DO NOT SKIP THIS LINE
 ```
+
+> **The provider line is not optional, and it is the whole difference.** Without it
+> OpenRouter load-balances this model across nineteen endpoints whose throughput spans 39x,
+> and it lands on the slow ones. Measured, same input, four runs: **59s, 175s, 145s, 189s**
+> unpinned; **8.4s, 8.4s, 8.7s, 10.1s** pinned. Cloud interpretation went 19.7s to 2.3s the
+> same way. Nothing about the prompts changed. If a demo suddenly feels like v7 again, check
+> this line first — the device prints `llm_routing provider={...}` at startup and the cloud
+> prints the same, so you can see in one glance whether it took.
+>
+> On the **Tizen Hub** the equivalent is `OPENROUTER_MODEL=openai/gpt-oss-120b:nitro` in
+> `goalflow.conf`, because the `provider` field needs a newer Semantic Kernel than the Hub's
+> System.Text.Json pin allows. See that file's comments.
 
 First-time-only install (once per repo): `.venv` + `pip install -e .` for the cloud;
 `npm install` for each UI.
@@ -162,7 +175,7 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
    filled, because a preference shapes a plan and can never block one.
    - *Say:* "Before it plans, it shows me what it heard — and where each rule came from. I
      sign off on the understanding, not the plan."
-3. **Watch it work** (~30–90s). The harness pipeline lights up engine by engine, each
+3. **Watch it work** (~8-12s, v8; it was 60-190s). The harness pipeline lights up engine by engine, each
    reporting a real number — *23 items · 4 expiring*, *12 considered, 1 rejected*, *3 rules
    held*. Open **Show details** for the labelled steps, including during planning.
    - *Say:* "Every number there is something it measured. The pipeline reports work; it
@@ -207,7 +220,7 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
 4. **Approve & Save.** The chat holds **"Saving this goal, and updating your other
    goals…"** for as long as the work takes — the cloud waits for the meal week to actually
    report its new plan before it closes the webview, so the board already has the change by
-   the time the user gets there. Expect ~20-30s: it is a real re-plan on the device.
+   the time the user gets there. Expect ~10s (v8; it was 20-30s): it is a real re-plan on the device.
    - *Say:* "It is not spinning for effect. The second goal is being re-planned while you
      watch, and this closes when that is done.
 5. **The board.** The meal card now says *"Plan changed — you're away Thu & Fri. Review."*
@@ -317,7 +330,7 @@ cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj 
 | `HTTP 429 … rate-limited` from the LLM | You're on a `:free` model. Use `openai/gpt-oss-120b` in **both** `.env`. |
 | `Resource temporarily unavailable (openrouter.ai:443)` mid-plan | A network/socket blip (a flaky link, a power cut). The device retries the grounding pass 3×; if it exhausts them the dispatch fails — reload the chat and resubmit once the link is stable. |
 | A goal sits on "Working out the steps…" for a long time | A stalled provider stream. v3 has a per-call deadline (M6) — it retries; if it persists, the provider is down, check the cloud terminal. |
-| Plan never appears | The reasoning model takes ~30–60s — narrate it. If the cloud terminal shows 429, fix the model. |
+| Plan never appears, or the whole demo feels like v7 | **Check `OPENROUTER_PROVIDER_ORDER` is set in BOTH `.env` files.** Unpinned, one plan takes 60-190s instead of ~10s. Both services log `llm_routing ...` at startup — if it says `off`, that is your answer. If the cloud terminal shows 429, fix the model. |
 | Device disconnects mid-plan | Keep the **cloud stable** during a run (don't restart it mid-session) — a cloud restart drops the device. |
 | Board shows nothing / a card is stuck | Reload the board (it re-fetches a fresh `board_snapshot`); a detail page that opened empty re-fills via `goal_state_get`. A card that won't move usually means the device is offline — it goes **At Risk / "went offline"**. |
 | **Advance day** does nothing / no "what happened" card | Nothing has changed for that sim day (a quiet day shows "nothing changed"), or no goals are running yet — create + approve a goal first. Check the cloud terminal shows the `day_advanced` frame going out. |
