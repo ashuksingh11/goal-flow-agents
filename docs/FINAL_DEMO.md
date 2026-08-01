@@ -28,7 +28,8 @@ in the two `.env` files and use a **paid** model (free `:free` models are rate-l
 # goal-flow-cloud-agent/.env  and  goal-flow-device-agent-ubuntu/.env:
 OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_MODEL=openai/gpt-oss-120b     # a real tool-calling model
-OPENROUTER_PROVIDER_ORDER=cerebras,groq  # v8 — DO NOT SKIP THIS LINE
+OPENROUTER_PROVIDER_ORDER=cerebras       # v8 — DO NOT SKIP THESE TWO LINES
+OPENROUTER_PROVIDER_ALLOW_FALLBACKS=false
 ```
 
 > **The provider line is not optional, and it is the whole difference.** Without it
@@ -39,9 +40,14 @@ OPENROUTER_PROVIDER_ORDER=cerebras,groq  # v8 — DO NOT SKIP THIS LINE
 > this line first — the device prints `llm_routing provider={...}` at startup and the cloud
 > prints the same, so you can see in one glance whether it took.
 >
-> On the **Tizen Hub** the equivalent is `OPENROUTER_MODEL=openai/gpt-oss-120b:nitro` in
-> `goalflow.conf`, because the `provider` field needs a newer Semantic Kernel than the Hub's
-> System.Text.Json pin allows. See that file's comments.
+> **`allow_fallbacks=false` is deliberate.** Cerebras plans a goal in 8-10s; the next-best
+> provider measured **203-234s** on the real pipeline — slower than sending no preference at
+> all. A fallback is not graceful degradation here, it is a silent four-minute stall on stage.
+> Pin hard, and if Cerebras is down you get a visible error you can re-run instead.
+>
+> On the **Tizen Hub** the same two lines go in `goalflow.conf` and work identically: both
+> device repos are pinned to Semantic Kernel 1.43, and `provider` travels on the HttpClient
+> rather than through SK, so there is nothing version-specific about it.
 
 First-time-only install (once per repo): `.venv` + `pip install -e .` for the cloud;
 `npm install` for each UI.
