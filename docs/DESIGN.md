@@ -138,6 +138,19 @@ Three things worth knowing:
   device's Safety Policy Engine answers *"may it happen?"* — and produces a far better refusal.
   Running the dishwasher on Wednesday is plainly actionable; scheduled inside the away window it
   comes back blocked, *"nobody is home"* (gate 21).
+- **The graph reasons in the DEVICE's day, not the machine's** (v8.1). The device runs a
+  `SimulatedClock` — anchored at real today when its process starts, stepped by *Advance day* —
+  and everything the user can see is dated by it: the plan's rows, the world's events, the
+  board's today. The hub reads that day off frames the device already sends
+  (`status.payload.sim_date`, `day_advanced.sim_date`), keeps it **per session**, and
+  `start_goal` stamps it into the graph so every node calls `_today(state)` instead of
+  `date.today()`. Stamped **once per run** on purpose: a goal is interpreted, grounded and
+  dispatched against a single day, and re-reading the clock mid-run would let a world tick
+  shift a goal's dates underneath it. Falls back to real today when no device has reported —
+  which is also when nothing has been simulated, so the two agree. Gate 29.
+- **The interpreter is handed a calendar, not asked to compute one** (v8.1). Given only
+  *"Real today is …"* it resolved named weekdays a day early, every time (§5b). It now receives
+  the next fortnight, dated and named. Gate 28 (cloud).
 - **`BoardService` (`board.py`) derives board truth from frames the hub already routes.**
   Progress, next step, ETA, alerts and state are folded from device `task_update`/`status`
   frames into whole-object `GoalSummary` deltas (replace-by-id, idempotent), sequenced by
@@ -192,6 +205,25 @@ but there is **no AX beat to demo**.
 and nothing else — arithmetic that needs world state (§5, the envelope) happens once in a
 policy **resolver** before the policy is armed, never inside a rule.
 
+**An actuation has four outcomes, not three** (v8.1). `executed`, `deferred_precheck`
+("not yet" — the world moved between planning and approval; the approval stands),
+`blocked_safety` ("never, as asked" — the gate refused; it does not stand) and now
+**`failed_actuator`**: it ran and threw. Plugins throw *deliberately* — `Deliveries.Hold`
+refuses an essential delivery precisely so a refusal cannot land on the card as a completed
+step — and the commonest trigger is not a plugin bug but the model naming something the
+household has never had. That invoke was unguarded, so one throw left the loop **and the
+handler**: later proposals skipped, nothing marked executed, and no `status` frame sent. The
+goal went silent, with one stack trace in the device log.
+
+Worse, it did not stay silent for one run. Tasks reach `Monitoring` on the **last line** of
+the approval handler, so a throw stranded them in `Executing` — and completion only swept
+`Monitoring`, so the goal could then never finish. Not late: never. Its card sat on the board
+past its dates for the rest of the session while every other goal retired around it, which is
+why the symptom looked unrelated to the crash that caused it. Completion now also sweeps
+`Executing` (a goal whose last day has passed is over, however its executor ended); still
+never swept are `Created`/`Ready`/`Planning`/`AwaitingApproval`, because a goal waiting on a
+person is not complete and retiring it would answer for them. Gate 21 covers both halves.
+
 **Multi-goal is real, and it was three concrete bugs.** Policy is keyed per goal with the
 current goal flowed to the filter via `AsyncLocal` (a singleton `SetPolicy` once let goal B
 overwrite goal A's allergens mid-plan — the worst possible failure for "code checks"); `Trace`
@@ -228,8 +260,13 @@ Seven rules, each closing off a tempting-but-wrong implementation:
   ignoring `applies_to`. Allergens ride on every goal (R7).
 - **hard scalar kinds** — `budget_cap`, `quiet_hours`, `peak_hours`, `away_window`,
   `budget_envelope`: most specific `applies_to` wins (goal > domain > household); on a tie the
-  **stricter** value wins, and two windows keep the incumbent and log, because windows do not
-  order meaningfully.
+  **stricter** value wins where the values order at all — a lower cap is a fact about the
+  numbers. Windows do not order, so on a tie the **later entry** wins: the store is
+  append-only, which makes a later position literally *"said afterwards"*, and at equal
+  specificity the later statement is the one a person means. It also gets the seed right for
+  free, since fixtures are written first. (v8.1 — this used to keep the *incumbent* and log a
+  warning, which is §5b's silent failure below. `captured_on` is not enough to order by: a
+  demo states every one of these rules on the same simulated day.)
 - **expired entries** drop first. Dates are **day offsets resolved against today**, so a
   seeded world never goes stale between demos.
 - **soft bias** is chosen by a small structured LLM call, with `applies_to` tag-matching as
@@ -295,7 +332,14 @@ second moves a *plan*.
 
 Approving a home-away goal writes its window to the store as a **household-scoped,
 chat-sourced, self-expiring** entry — until approval it is a proposal binding only itself;
-approval makes it a fact about the household. The cloud then re-resolves every other
+approval makes it a fact about the household. **Only if that goal AUTHORED it** (v8.1):
+`contract.constraints.hard` is the *resolved* set, so it carries a live household window the
+goal merely inherited, and promoting that meant every goal re-promoted what it had just read
+— a *Weekly Meal Plan* wrote two household away windows this way, one of them seven days
+long. Authorship is decided by asking what the household already holds for *everyone*
+(resolving against the empty domain matches `applies_to: ["*"]` and skips domain-scoped
+entries): if this goal's window is already in that set, the goal is a reader. The cloud then
+re-resolves every other
 active goal and, where the enforced set actually moved, sends
 `control: constraints_changed` carrying the account's new `constraints.hard`, a steer, and
 one sentence for the board. The device re-arms from what it was sent (`ReDispatchAsync` —
@@ -338,6 +382,28 @@ hold inside the iframe is a hold nobody sees. The cloud owns the bracket and the
 dwell: a floor for the ordinary hand-off, and for a household change, a bounded wait until
 the re-planned goal actually reports back, so the user reaches a board that already has the
 change. Gate 18 pins the floor, the wait and the bound.
+
+**It failed silently three times, and each cause was invisible because every individual step
+was right** (v8.1). Worth recording, because this path has no error state — it either changes
+another plan or it does not, and "did not" looks exactly like "nothing needed to move".
+
+1. **The window itself was a day early.** `_align_away_window` takes `intent.time_window`
+   VERBATIM, and the interpreter, handed only *"Real today is 2026-08-02 (Sunday)"*, resolved
+   **every** named weekday one day early — *Tuesday and Wednesday* → Mon–Tue, four for four at
+   temperature 0. It was not misreading a calendar; it was not consulting one. It is now given
+   the next fortnight, dated and named, so a weekday is a lookup: 20/20 across five anchors.
+2. **The cloud was on the wrong day.** The device runs a `SimulatedClock` stepped by
+   *Advance day*; the cloud called `date.today()`. The two agree until the second minute of a
+   demo. The hub now learns the device's day from frames it already sends
+   (`status.sim_date`, `day_advanced.sim_date`), stamps it into the graph **once per run**, and
+   every node reads it (§3). Per home — two devices can sit on different simulated days.
+3. **The new window was written, logged, and invisible.** Two household windows at equal
+   specificity, and resolution kept whichever came first (§5). So every other goal went on
+   resolving the *old* dates, the fan-out compared each goal's enforced set before and after,
+   found them identical, and correctly concluded nothing had moved. Nothing had.
+
+Gate 17 gained the authorship and newest-wins cases it lacked through two rounds of this;
+gates 28 and 29 (cloud) pin the calendar and the clock.
 
 **`GOALFLOW_PROFILE_PATH`** points the store at a scratch copy — the cloud's equivalent of the
 device's `--data`. A path that does not exist yet is seeded from the committed profile on first
@@ -496,8 +562,13 @@ empty link because v6-m2 chains it.
 
 **Cloud** — `python scripts/verify_*.py`: gate 10 generic actionability, 12 persistence across
 restart, 13 board fold (incl. v7.1's retire-on-advance-day), 14 contract mirrors, 15 constraint
-resolution, 16 chat capture, 17 cross-goal blast radius, 18 the webview outlasting its save,
-27 a refusal reaching its webview. Everything but 10 and 12 needs no API key.
+resolution, 16 chat capture, 17 cross-goal blast radius — plus, since v8.1, *authorship* (a goal
+carrying an inherited window must not re-promote it) and *newest-wins* (a second window at equal
+specificity must actually reach the other goals) — 18 the webview outlasting its save,
+27 a refusal reaching its webview, **28 a named weekday means that weekday**, **29 the cloud
+reasons in the device's day**. Everything but 10 and 12 needs no API key; gate 28's interpreter
+half needs one and SKIPS without it rather than passing, because a gate that cannot run must not
+be able to pass either.
 
 *The two numbering spaces are independent and they collide* — device gates 15/16 are the
 provider deadline; cloud gates 15/16 are constraints and capture. Say which side you mean.
@@ -538,6 +609,7 @@ Brief by design. The detail is in the code, the gates, and `git log`; the pre-me
 | **v7.7** | Two subtractions. **Theater and Flow are removed** from the chat surface — stage machinery for a demo that no longer needs it, and on a Hub two controls a family could tap into a state with no way out. Taken out whole (HarnessTheater, PresenterFeed, the raw-frame buffer they fed, and the `FlowFrame` type), not just hidden. And the **device name appears only when there is more than one device** — on both surfaces it was a dev machine's hostname on the family's screen, wired to a picker with a single entry. The chip still returns for a real choice, and whenever the connection is not open; the board's offline notice still names the hub that went away, because there WHICH hub is the point. |
 | **v7.8** | *Show details* stopped flickering, and the board lost its Harness Activity card. The flicker was the tail-follow racing itself: `scrollTo({behavior:"smooth"})` on every streamed token chunk, dozens a second, each smooth scroll interrupted and restarted before it arrived — a live log tail should stay pinned, not animate, so it is now instant, coalesced to one rAF, and only follows when the reader is already at the bottom. Two multipliers went with it: the run clock re-rendered the card 10×/s for a display that changes 1×/s, and `buildTranscript` ran on every one of those renders while its memoized sibling did not. The **Harness Activity** ribbon is removed — harness internals on the screen a family uses to see their goals; the reducer's fold stays, because gate 14 requires every `agent_event`-handling surface to handle all seven kinds. |
 | **v8** | **The demo was slow because nobody had chosen an inference provider.** Four identical standalone runs on one afternoon took **59s, 175s, 145s and 189s** — same command, same input, same model. The variable was the endpoint: with no `provider` field OpenRouter load-balances `gpt-oss-120b` across nineteen providers whose throughput spans **39x**, and it kept picking the slow tier (CoreWeave 52 tok/s, Novita 76, against Cerebras 1523). Benchmarked alone, the same compose-shaped task ran in **50.1s unpinned and 1.5s pinned**. Pinning Cerebras: those four runs become **8.4 / 8.4 / 8.7 / 10.1s**, grounding 37.9-95.0s → 4.6-5.7s, compose 7.3-120.3s → 1.9-2.7s, cloud interpretation 19.7s → 2.3s, and the run-to-run spread 3.2x → 1.2x. Per goal, spoken to plan: **~225s → ~11s**. Not one prompt changed. Two negative results are recorded so they are not retried: `reasoning_effort: low` collapses reasoning from ~1400 tokens to 26-89 and made **every** benchmarked run return an invalid plan, while `medium` and the provider default are within 0.2s of each other once the provider is fast — so the knob is built, documented and shipped OFF. And an early version of the cloud measurement used a two-module capability digest and showed **no difference at all**, because a small prompt is fast on a slow provider too; it took the real 20-module digest to show the 8.5x. Also fixed, as defects rather than latency: compose's retry budget was per-attempt so three ceilings plus backoff could spend ~9 minutes on one goal (now one clock for the whole loop); the grounding tool loop had no bound at all, falling back to SK's 128 (now capped at 24, and the **round count is logged** — it was the unmeasured thing that varied 80s-240s); decompose was asking for compose's 16000 tokens to return eight task titles; and `relay_agent_event` was writing **1.19 GB of synchronous SQLite per goal** on the event loop, ahead of the UI relay, into an `event_log` written in five places and read in none. Streaming compose was designed and **rejected**: ~85% of what it emits is reasoning tokens SK cannot surface, and it would have destroyed the outcome column's exact slot reservation to light up the last fifth of a wait that is now two seconds long. **Cost was measured too, and the cheap options all lose**: Cerebras is the DEAREST endpoint for this model ($0.35/M in against CoreWeave's $0.03) but every alternative run through the real pipeline costs 20-60x the wall-clock to save about a cent — groq 234s, nebius 203s, deepinfra 551s, against 8-10s — and `gpt-oss-20b` is not cheap at all, it returns an EMPTY grounding summary the pipeline then plans around. A goal costs ~1.5 cents; the genuinely free path is the offline gates. That measurement is also why **`allow_fallbacks` is FALSE**: the next-best provider is slower than no pinning at all, so a fallback is a silent four-minute stall rather than a degrade, and failing visibly is the better demo. **Both device repos are now pinned to SK 1.43.0 exactly** — Tizen cannot move (Tizen 12 ships its own System.Text.Json 8.x as a platform assembly and SK ≥1.61 wants 10.x), so Ubuntu matches it rather than the reverse; it had been floating on `1.*` and had drifted 1.33→1.78 unnoticed, which only started to matter when v8 became the first code to need a post-1.43 API. `provider` therefore travels on the HttpClient (`OpenRouterBodyHandler`) rather than through SK, which works on any SK version and keeps the two device cores byte-identical. |
+| **v8.1** | **The cross-goal moment failed silently three times, and each cause was invisible because every individual step was right.** The interpreter resolved named weekdays a day early — *Tuesday and Wednesday* → Mon–Tue, four for four at temperature 0 — because it was told the date and left to do the arithmetic; it now gets a dated fortnight and scores 20/20 across five anchors. The cloud was reasoning on `date.today()` while the world ran on the device's `SimulatedClock`, which diverge the second anyone presses *Advance day*; the hub now learns the device's day off frames it already sends and stamps it into the graph once per run. And a newly promoted household window was written, logged and **invisible** — two entries at equal specificity, and resolution kept whichever came first — so every other goal went on resolving the old dates, the fan-out found each enforced set unchanged, and correctly concluded nothing had moved. Nothing had. The store is append-only, so a later position is *"said afterwards"*: at equal specificity the later entry now wins. A fourth cause kept it coming back — the fan-out promoted whatever `away_window` sat in the approved goal's *resolved* constraints, with no check that the goal introduced it, so every goal re-promoted what it had just read and a *Weekly Meal Plan* wrote two household away windows, one seven days long. Once a stale window covers the week the idempotence guard makes the real approval write nothing, and the demo stops working with no error anywhere. **On the device, an actuator that threw took the goal down with it** — plugins throw deliberately, the invoke was unguarded, and one throw skipped every later proposal and sent no `status` at all. It then outlived itself: tasks reach `Monitoring` on the handler's last line, so they stranded in `Executing`, and completion swept only `Monitoring` — the goal could *never* finish, and its card sat on the board past its dates for the rest of the session. Fourth outcome `failed_actuator`; completion sweeps `Executing`. **Four UI fixes** rounded it out: the plan now waits for the harness to finish speaking (v8's latency had them arriving together, two things claiming to be the front of the run); the blank page after *Approve & Save* was two bugs wearing one face — the saving screen hung off *unanimous* approval when firm proposals are opt-in, and was positioned against a shell that drops to `height:auto` below 720px, centring itself a screen and a half above the reader; a redaction marker stopped printing an internal object's field names mid-paragraph; and the board's detail page stopped saying the same thing twice, while *"Got it"* finally cleared the line it acknowledged. Gates 28 and 29 are new (cloud); 17 and 21 gained the cases they had been missing through two rounds each. |
 
 ---
 
