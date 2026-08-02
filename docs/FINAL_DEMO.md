@@ -116,7 +116,8 @@ them):
 - **Board/chat (Ubuntu):** `npm run dev` — leave `VITE_WS_URL` unset. On the tablet browse
   to `http://<ubuntu-ip>:5174` (board) / `:5173` (chat); each connects to
   `ws://<ubuntu-ip>:8000/ws` automatically.
-- **Device (Tizen Hub):** the agent is in sync with ubuntu (re-synced through v6). Set
+- **Device (Tizen Hub):** the agent is in sync with ubuntu (re-synced through v8.1 — the
+  core, harness, contracts, products and world seed are byte-identical). Set
   `WS_URL=ws://<ubuntu-ip>:8000/ws` in `goalflow.conf`, deploy the `.tpk`, watch
   `dlogutil GOALFLOW`. (An Ubuntu device instead: `--connect ws://<ubuntu-ip>:8000/ws`.)
   - **No `--data` flag on Tizen** — a Tizen service takes no CLI args. It does the
@@ -124,7 +125,37 @@ them):
     so on first run `DeviceConfig.ResolveDataDir()` seeds a **writable copy into the app Data
     dir** and mutates only that — the packaged seed is never touched, and nothing writes into
     the repo. To point it elsewhere (the `--data` equivalent) set `GOALFLOW_DATA_DIR=…` in
-    `goalflow.conf`; for a clean world, delete that on-device dir, or send `control: reset`.
+    `goalflow.conf`.
+
+#### Tizen: a clean world between demos
+
+`rm -rf data-run1` has no equivalent to type here — the world lives in the app's private
+data dir and the service has no console. What makes a wipe work is that
+`SeedMissing(bundled, writable)` copies a bundled `data/*.json` **only when the file is
+absent**: nothing overwrites a file that is still there, so a dirty world survives every
+relaunch until you remove it. **Deleting the JSON is the wipe**; the next launch re-seeds.
+
+```bash
+sdb shell "rm -f /home/owner/apps_rw/org.goalflow.deviceagent/data/*.json"
+sdb shell app_launcher -k org.goalflow.deviceagent    # then relaunch the service
+```
+
+Check the path on your image first (`sdb shell ls /home/owner/apps_rw/`) — it moves
+between Tizen versions and profiles.
+
+**The `*.json` glob spares `device_id` on purpose.** It lives in the same directory and is
+the cloud's PAIRING KEY: delete it and the Hub returns under a new identity, so every UI
+that remembered the old one shows it offline until re-picked. `rm -rf <data>/*` and
+`sdb uninstall org.goalflow.deviceagent` (the wholesale option — cleanest, depends on no
+path convention) both take it with them.
+
+> ⚠️ **`control: reset` is not the same thing.** The contract carries it and the device
+> really does rewrite every seeded world file and drop every active goal — but
+> `MockFamilyHubAdapter` snapshots its seed from the *writable* dir in its constructor, so
+> reset restores the world to **whatever it was when the service started**, not to the
+> bundled seed. On Ubuntu those are the same because you wipe before launching; on Tizen
+> they are the same only if the service started clean. No UI sends `reset` today either —
+> the board only sends `advance_day` — so it takes a hand-sent frame.
 
 ### Run — several homes on ONE cloud (multi-session)
 
