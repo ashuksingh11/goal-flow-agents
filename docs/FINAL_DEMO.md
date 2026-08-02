@@ -28,7 +28,26 @@ in the two `.env` files and use a **paid** model (free `:free` models are rate-l
 # goal-flow-cloud-agent/.env  and  goal-flow-device-agent-ubuntu/.env:
 OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_MODEL=openai/gpt-oss-120b     # a real tool-calling model
+OPENROUTER_PROVIDER_ORDER=cerebras       # v8 — DO NOT SKIP THESE TWO LINES
+OPENROUTER_PROVIDER_ALLOW_FALLBACKS=false
 ```
+
+> **The provider line is not optional, and it is the whole difference.** Without it
+> OpenRouter load-balances this model across nineteen endpoints whose throughput spans 39x,
+> and it lands on the slow ones. Measured, same input, four runs: **59s, 175s, 145s, 189s**
+> unpinned; **8.4s, 8.4s, 8.7s, 10.1s** pinned. Cloud interpretation went 19.7s to 2.3s the
+> same way. Nothing about the prompts changed. If a demo suddenly feels like v7 again, check
+> this line first — the device prints `llm_routing provider={...}` at startup and the cloud
+> prints the same, so you can see in one glance whether it took.
+>
+> **`allow_fallbacks=false` is deliberate.** Cerebras plans a goal in 8-10s; the next-best
+> provider measured **203-234s** on the real pipeline — slower than sending no preference at
+> all. A fallback is not graceful degradation here, it is a silent four-minute stall on stage.
+> Pin hard, and if Cerebras is down you get a visible error you can re-run instead.
+>
+> On the **Tizen Hub** the same two lines go in `goalflow.conf` and work identically: both
+> device repos are pinned to Semantic Kernel 1.43, and `provider` travels on the HttpClient
+> rather than through SK, so there is nothing version-specific about it.
 
 First-time-only install (once per repo): `.venv` + `pip install -e .` for the cloud;
 `npm install` for each UI.
@@ -97,7 +116,8 @@ them):
 - **Board/chat (Ubuntu):** `npm run dev` — leave `VITE_WS_URL` unset. On the tablet browse
   to `http://<ubuntu-ip>:5174` (board) / `:5173` (chat); each connects to
   `ws://<ubuntu-ip>:8000/ws` automatically.
-- **Device (Tizen Hub):** the agent is in sync with ubuntu (re-synced through v6). Set
+- **Device (Tizen Hub):** the agent is in sync with ubuntu (re-synced through v8.1 — the
+  core, harness, contracts, products and world seed are byte-identical). Set
   `WS_URL=ws://<ubuntu-ip>:8000/ws` in `goalflow.conf`, deploy the `.tpk`, watch
   `dlogutil GOALFLOW`. (An Ubuntu device instead: `--connect ws://<ubuntu-ip>:8000/ws`.)
   - **No `--data` flag on Tizen** — a Tizen service takes no CLI args. It does the
@@ -105,7 +125,37 @@ them):
     so on first run `DeviceConfig.ResolveDataDir()` seeds a **writable copy into the app Data
     dir** and mutates only that — the packaged seed is never touched, and nothing writes into
     the repo. To point it elsewhere (the `--data` equivalent) set `GOALFLOW_DATA_DIR=…` in
-    `goalflow.conf`; for a clean world, delete that on-device dir, or send `control: reset`.
+    `goalflow.conf`.
+
+#### Tizen: a clean world between demos
+
+`rm -rf data-run1` has no equivalent to type here — the world lives in the app's private
+data dir and the service has no console. What makes a wipe work is that
+`SeedMissing(bundled, writable)` copies a bundled `data/*.json` **only when the file is
+absent**: nothing overwrites a file that is still there, so a dirty world survives every
+relaunch until you remove it. **Deleting the JSON is the wipe**; the next launch re-seeds.
+
+```bash
+sdb shell "rm -f /home/owner/apps_rw/org.goalflow.deviceagent/data/*.json"
+sdb shell app_launcher -k org.goalflow.deviceagent    # then relaunch the service
+```
+
+Check the path on your image first (`sdb shell ls /home/owner/apps_rw/`) — it moves
+between Tizen versions and profiles.
+
+**The `*.json` glob spares `device_id` on purpose.** It lives in the same directory and is
+the cloud's PAIRING KEY: delete it and the Hub returns under a new identity, so every UI
+that remembered the old one shows it offline until re-picked. `rm -rf <data>/*` and
+`sdb uninstall org.goalflow.deviceagent` (the wholesale option — cleanest, depends on no
+path convention) both take it with them.
+
+> ⚠️ **`control: reset` is not the same thing.** The contract carries it and the device
+> really does rewrite every seeded world file and drop every active goal — but
+> `MockFamilyHubAdapter` snapshots its seed from the *writable* dir in its constructor, so
+> reset restores the world to **whatever it was when the service started**, not to the
+> bundled seed. On Ubuntu those are the same because you wipe before launching; on Tizen
+> they are the same only if the service started clean. No UI sends `reset` today either —
+> the board only sends `advance_day` — so it takes a hand-sent frame.
 
 ### Run — several homes on ONE cloud (multi-session)
 
@@ -162,7 +212,7 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
    filled, because a preference shapes a plan and can never block one.
    - *Say:* "Before it plans, it shows me what it heard — and where each rule came from. I
      sign off on the understanding, not the plan."
-3. **Watch it work** (~30–90s). The harness pipeline lights up engine by engine, each
+3. **Watch it work** (~8-12s, v8; it was 60-190s). The harness pipeline lights up engine by engine, each
    reporting a real number — *23 items · 4 expiring*, *12 considered, 1 rejected*, *3 rules
    held*. Open **Show details** for the labelled steps, including during planning.
    - *Say:* "Every number there is something it measured. The pipeline reports work; it
@@ -207,7 +257,7 @@ Before you start: `GOALFLOW_PROFILE_PATH=./data/memory/demo_profile.json` in the
 4. **Approve & Save.** The chat holds **"Saving this goal, and updating your other
    goals…"** for as long as the work takes — the cloud waits for the meal week to actually
    report its new plan before it closes the webview, so the board already has the change by
-   the time the user gets there. Expect ~20-30s: it is a real re-plan on the device.
+   the time the user gets there. Expect ~10s (v8; it was 20-30s): it is a real re-plan on the device.
    - *Say:* "It is not spinning for effect. The second goal is being re-planned while you
      watch, and this closes when that is done.
 5. **The board.** The meal card now says *"Plan changed — you're away Thu & Fri. Review."*
@@ -317,7 +367,7 @@ cd goal-flow-device-agent-ubuntu && dotnet run --project GoalFlow.Device.csproj 
 | `HTTP 429 … rate-limited` from the LLM | You're on a `:free` model. Use `openai/gpt-oss-120b` in **both** `.env`. |
 | `Resource temporarily unavailable (openrouter.ai:443)` mid-plan | A network/socket blip (a flaky link, a power cut). The device retries the grounding pass 3×; if it exhausts them the dispatch fails — reload the chat and resubmit once the link is stable. |
 | A goal sits on "Working out the steps…" for a long time | A stalled provider stream. v3 has a per-call deadline (M6) — it retries; if it persists, the provider is down, check the cloud terminal. |
-| Plan never appears | The reasoning model takes ~30–60s — narrate it. If the cloud terminal shows 429, fix the model. |
+| Plan never appears, or the whole demo feels like v7 | **Check `OPENROUTER_PROVIDER_ORDER` is set in BOTH `.env` files.** Unpinned, one plan takes 60-190s instead of ~10s. Both services log `llm_routing ...` at startup — if it says `off`, that is your answer. If the cloud terminal shows 429, fix the model. |
 | Device disconnects mid-plan | Keep the **cloud stable** during a run (don't restart it mid-session) — a cloud restart drops the device. |
 | Board shows nothing / a card is stuck | Reload the board (it re-fetches a fresh `board_snapshot`); a detail page that opened empty re-fills via `goal_state_get`. A card that won't move usually means the device is offline — it goes **At Risk / "went offline"**. |
 | **Advance day** does nothing / no "what happened" card | Nothing has changed for that sim day (a quiet day shows "nothing changed"), or no goals are running yet — create + approve a goal first. Check the cloud terminal shows the `day_advanced` frame going out. |
