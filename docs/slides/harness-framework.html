@@ -1,0 +1,402 @@
+<meta charset="utf-8">
+<title>Device Agent Harness — As Built</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #ECEFF4; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: #1A1E2C;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    width: 1800px;
+    margin: 0 auto;
+    padding: 56px 64px 48px;
+  }
+
+  /* ---------- Title ---------- */
+  .title-block { margin-bottom: 30px; }
+  h1 {
+    font-size: 34px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    color: #1A1E2C;
+  }
+  .subtitle {
+    margin-top: 9px;
+    font-size: 16.5px;
+    color: #5C6377;
+    font-weight: 400;
+  }
+
+  /* ---------- Table card ---------- */
+  .card {
+    background: #FFFFFF;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(26, 30, 44, 0.07);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  col.c-num     { width: 4.5%; }
+  col.c-name    { width: 14.5%; }
+  col.c-purpose { width: 25%; }
+  col.c-role    { width: 29%; }
+  col.c-ex      { width: 27%; }
+
+  thead th {
+    background: #1A1E2C;
+    color: #FFFFFF;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 17px 20px 16px;
+  }
+  thead th.th-num { padding-left: 0; padding-right: 0; text-align: center; }
+  thead th.th-ex  { padding-right: 30px; }
+
+  tbody tr { border-top: 1px solid #E2E6F0; }
+  tbody tr:first-child { border-top: none; }
+  tbody tr:nth-child(even) { background: #F7F9FC; }
+
+  tbody td {
+    vertical-align: top;
+    padding: 26px 20px 27px;
+  }
+
+  /* number disc */
+  td.td-num { padding-left: 0; padding-right: 0; text-align: center; }
+  .disc {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #3F6FE8;
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: -3px;
+  }
+
+  td.td-name {
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 1.32;
+    color: #1A1E2C;
+    letter-spacing: 0.002em;
+  }
+
+  td.td-purpose {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #5C6377;
+    padding-right: 30px;
+  }
+
+  td.td-role { padding-right: 26px; }
+  .role-line {
+    position: relative;
+    font-size: 14.5px;
+    line-height: 1.45;
+    color: #5C6377;
+    padding-left: 17px;
+  }
+  .role-line + .role-line { margin-top: 7px; }
+  .role-line::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.72em;
+    width: 8px;
+    height: 1.5px;
+    background: #AEB8CC;
+  }
+
+  td.td-ex { padding-right: 30px; }
+  .ex-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+  .ex-item {
+    position: relative;
+    font-size: 14.5px;
+    line-height: 1.45;
+    color: #1A1E2C;
+    padding-left: 15px;
+  }
+  .ex-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #3F6FE8;
+    opacity: 0.55;
+  }
+
+  /* ---------- Footer ---------- */
+  .footer {
+    margin-top: 26px;
+    padding: 0 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 80px;
+  }
+  .footer-left {
+    font-size: 13px;
+    color: #5C6377;
+    line-height: 1.5;
+    padding-top: 21px;
+    white-space: nowrap;
+  }
+  .footer-left strong {
+    font-weight: 600;
+    color: #414a5e;
+  }
+  .footer-right { max-width: 900px; }
+  .footer-heading {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: #8A92A6;
+    margin-bottom: 8px;
+  }
+  .footer-note {
+    position: relative;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #5C6377;
+    padding-left: 14px;
+  }
+  .footer-note + .footer-note { margin-top: 4px; }
+  .footer-note::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.75em;
+    width: 7px;
+    height: 1px;
+    background: #AEB8CC;
+  }
+</style>
+
+<div class="page">
+  <div class="title-block">
+    <h1>DEVICE AGENT HARNESS — AS BUILT</h1>
+    <div class="subtitle">Nine harnesses running on the Family Hub device agent, validated against the implementation</div>
+  </div>
+
+  <div class="card">
+    <table>
+      <colgroup>
+        <col class="c-num"><col class="c-name"><col class="c-purpose"><col class="c-role"><col class="c-ex">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="th-num">#</th>
+          <th>Harness</th>
+          <th>Purpose</th>
+          <th>Role</th>
+          <th class="th-ex">Family Hub Examples</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td class="td-num"><span class="disc">1</span></td>
+          <td class="td-name">Pre-check Engine</td>
+          <td class="td-purpose">Confirm the world is ready before anything is spent or done.</td>
+          <td class="td-role">
+            <div class="role-line">Probes runtime conditions before planning</div>
+            <div class="role-line">Checks again at the moment of acting</div>
+            <div class="role-line">Blocks with a fix, not an error code</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">Samsung account signed in</div>
+              <div class="ex-item">Internet and SmartThings reachable</div>
+              <div class="ex-item">Oven, dishwasher or fridge online</div>
+              <div class="ex-item">Payment set up before an order</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">2</span></td>
+          <td class="td-name">Capability Manager</td>
+          <td class="td-purpose">Know what the product can do, and what the agent may touch.</td>
+          <td class="td-role">
+            <div class="role-line">Discovers every module and function</div>
+            <div class="role-line">Separates reading from acting</div>
+            <div class="role-line">Hides prohibited capabilities entirely</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">Food inventory and recipes</div>
+              <div class="ex-item">Calendar, reminders, family profiles</div>
+              <div class="ex-item">Shopping list and deliveries</div>
+              <div class="ex-item">Appliances, security, notifications</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">3</span></td>
+          <td class="td-name">Task Manager</td>
+          <td class="td-purpose">Turn one goal into tracked work with a lifecycle.</td>
+          <td class="td-role">
+            <div class="role-line">Breaks a goal into tasks and dependencies</div>
+            <div class="role-line">Tracks each one through to completion</div>
+            <div class="role-line">Pauses, retries and cancels</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">Weekly meal planning</div>
+              <div class="ex-item">Home-away preparation</div>
+              <div class="ex-item">Birthday party and guest dinner</div>
+              <div class="ex-item">Grocery cost and energy saving</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">4</span></td>
+          <td class="td-name">Context &amp; Grounding Engine</td>
+          <td class="td-purpose">Read the real world before deciding anything.</td>
+          <td class="td-role">
+            <div class="role-line">Gathers live product and household state</div>
+            <div class="role-line">Lets the model read, never write</div>
+            <div class="role-line">Anchors every date to today</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">What is in the fridge, and what expires</div>
+              <div class="ex-item">Calendar and busy evenings</div>
+              <div class="ex-item">Household dietary rules and profiles</div>
+              <div class="ex-item">Recent activity, deliveries, security state</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">5</span></td>
+          <td class="td-name">Goal Planner</td>
+          <td class="td-purpose">Compose a dated, explained plan from grounded facts.</td>
+          <td class="td-role">
+            <div class="role-line">Weighs options against household rules</div>
+            <div class="role-line">Puts a date on every step</div>
+            <div class="role-line">Records what it rejected, and why</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">A week of dinners, each with its reason</div>
+              <div class="ex-item">A two-phase away plan: before leaving, on return</div>
+              <div class="ex-item">A dish turned down on preference, not rule</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">6</span></td>
+          <td class="td-name">Safety Policy Engine</td>
+          <td class="td-purpose">Decide what may happen at all, and what needs consent.</td>
+          <td class="td-role">
+            <div class="role-line">Grades every action A0, A1, A2 or AX</div>
+            <div class="role-line">Enforces household rules on every call</div>
+            <div class="role-line">Screens results before the model sees them</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">A0 — mark an item as used</div>
+              <div class="ex-item">A1 — add to the shopping list</div>
+              <div class="ex-item">A2 — place an order, hold a delivery</div>
+              <div class="ex-item">AX — prohibited, with no approval path</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">7</span></td>
+          <td class="td-name">Approval Manager</td>
+          <td class="td-purpose">Nothing that touches the real world happens without a person.</td>
+          <td class="td-role">
+            <div class="role-line">Freezes acting calls into a proposal ledger</div>
+            <div class="role-line">Presents them as one decision</div>
+            <div class="role-line">Executes only what was approved</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">Approve the week's shopping list</div>
+              <div class="ex-item">Approve holding deliveries while away</div>
+              <div class="ex-item">Approve the away routine and arming security</div>
+              <div class="ex-item">Decline one item without losing the plan</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">8</span></td>
+          <td class="td-name">Product API Adapter</td>
+          <td class="td-purpose">The single seam between the agent and the product.</td>
+          <td class="td-role">
+            <div class="role-line">Every product read and write passes through it</div>
+            <div class="role-line">Absorbs differences between product APIs</div>
+            <div class="role-line">Swap the product, keep the agent</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">Inventory and recipe services</div>
+              <div class="ex-item">Calendar and family profile services</div>
+              <div class="ex-item">Appliance and security control</div>
+              <div class="ex-item">Deliveries and notifications</div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="td-num"><span class="disc">9</span></td>
+          <td class="td-name">Monitor &amp; Adapt</td>
+          <td class="td-purpose">Keep the plan true after it has been approved.</td>
+          <td class="td-role">
+            <div class="role-line">Watches each goal's slice of the world</div>
+            <div class="role-line">Judges whether a change actually matters</div>
+            <div class="role-line">Re-plans only the part affected</div>
+          </td>
+          <td class="td-ex">
+            <div class="ex-grid">
+              <div class="ex-item">Food arrives, or is about to expire</div>
+              <div class="ex-item">A guest list changes</div>
+              <div class="ex-item">Another goal makes some days unusable</div>
+              <div class="ex-item">A quiet day — nothing proposed</div>
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">
+      <strong>As built:</strong>&nbsp; 13 capability modules&nbsp; ·&nbsp; 37 functions&nbsp; ·&nbsp; 6 goal domains&nbsp; ·&nbsp; 4 safety rule kinds
+    </div>
+    <div class="footer-right">
+      <div class="footer-heading">Where the build differs from the spec</div>
+      <div class="footer-note">The Goal Planner is real but has no module of its own — it lives in the agent core.</div>
+      <div class="footer-note">AX is implemented and enforced; no Family Hub capability is graded AX in the shipped policy today.</div>
+      <div class="footer-note">Product APIs sit behind the real seam, but are backed by mock documents rather than live services.</div>
+    </div>
+  </div>
+</div>
